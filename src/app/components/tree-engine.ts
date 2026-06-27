@@ -814,3 +814,54 @@ export class TreeEngine {
         allPoints.push(new THREE.Vector3(
           bOx + outDir.x * along + sideDir.x * across + up.x * thick,
           bOy + outDir.y * along + sideDir.y * across + up.y * thick,
+          bOz + outDir.z * along + sideDir.z * across + up.z * thick,
+        ));
+      };
+
+      const perimeterPts = shape === 'needle' ? 6
+        : (shape === 'round' ? 18 : 12) + Math.floor(Math.random() * 4);
+      for (let i = 0; i < perimeterPts; i++) {
+        const t = i / perimeterPts;
+        const angle = t * Math.PI * 2;
+        const along = (leafLen * 0.5) + Math.cos(angle) * (leafLen * 0.5);
+        const across = Math.sin(angle) * (leafWidth * 0.5);
+        addBlade(along, across, (Math.random() - 0.5) * 0.004);
+      }
+      const fillPts = shape === 'needle' ? 2 : 6 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < fillPts; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const rFrac = Math.sqrt(Math.random());
+        const along = (leafLen * 0.5) + Math.cos(angle) * (leafLen * 0.5) * rFrac;
+        const across = Math.sin(angle) * (leafWidth * 0.5) * rFrac;
+        addBlade(along, across, (Math.random() - 0.5) * 0.003);
+      }
+      for (let i = 0; i < 3; i++) addBlade((i + 1) / 4 * leafLen, 0, 0);
+      addBlade(0, 0, 0);
+      addBlade(leafLen, 0, 0);
+    }
+
+    this.leaves.push({
+      position: seg.position.clone(),
+      points: allPoints,
+      petioleCount,
+      centerCount: 0,
+      scale: 0,
+      targetScale: 1,
+      age: 0,
+      branchId,
+      segIdx,
+      clusterIdx: 0,
+    });
+  }
+
+  /** Fruit cluster: dense sphere (flowerCenterColor) + calyx leaves (leafColor) */
+  private spawnFruitAt(branchId: number, segIdx: number, seg: Segment, sizeMult: number) {
+    const up = seg.direction.clone().normalize();
+    const arbitrary = Math.abs(up.y) > 0.9
+      ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+    const perp1 = new THREE.Vector3().crossVectors(up, arbitrary).normalize();
+    const perp2 = new THREE.Vector3().crossVectors(up, perp1).normalize();
+
+    const twist  = Math.random() * Math.PI * 2;
+    const outDir = perp1.clone().multiplyScalar(Math.cos(twist))
+      .add(perp2.clone().multiplyScalar(Math.sin(twist))).normalize();
