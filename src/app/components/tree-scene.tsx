@@ -967,3 +967,54 @@ export function TreeScene({
       const dx = touches[0].clientX - touches[1].clientX;
       const dy = touches[0].clientY - touches[1].clientY;
       return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        touchPinchStartDist    = getTouchDist(e.touches);
+        touchPinchStartCamDist = smoothedCamDist;
+        touchPinchActive       = true;
+      } else {
+        touchPinchActive = false;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !touchPinchActive) return;
+      e.preventDefault();
+      const newDist = getTouchDist(e.touches);
+      if (touchPinchStartDist < 1) return;
+      // Pinch in (fingers closer) → ratio > 1 → zoom in (reduce cam dist)
+      const ratio       = touchPinchStartDist / newDist;
+      const newCamDist  = Math.max(2, Math.min(13, touchPinchStartCamDist * ratio));
+      smoothedCamDist   = newCamDist;
+      const treeH       = engineRef.current?.getMaxHeight() ?? 0;
+      const baseDist    = 5 + Math.max(0, treeH - 0.5) * 0.55;
+      userZoomMult      = Math.max(0.35, Math.min(1.4, newCamDist / Math.max(1, baseDist)));
+      pinchZoomOverride = 2.5;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) touchPinchActive = false;
+    };
+
+    container.addEventListener('touchstart',  handleTouchStart, { passive: true });
+    container.addEventListener('touchmove',   handleTouchMove,  { passive: false });
+    container.addEventListener('touchend',    handleTouchEnd,   { passive: true });
+    container.addEventListener('touchcancel', handleTouchEnd,   { passive: true });
+
+    // Particle sway state
+    let swayTime = 0;
+    let inertiaX = 0;
+    let inertiaZ = 0;
+    // Track azimuthal angle around target — zoom changes radius (not angle) so it
+    // never affects sway. Only auto-rotation (angle change) drives leaf movement.
+    let prevCamAngle = Math.atan2(
+      camera.position.x - 0,   // initial target.x = 0
+      camera.position.z - 0,   // initial target.z = 0
+    );
+
+    const animate = () => {
+      animId = requestAnimationFrame(animate);
+      const now = performance.now();
+      const dt  = Math.min((now - lastTime) / 1000, 0.1);
