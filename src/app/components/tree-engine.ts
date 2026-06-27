@@ -304,3 +304,54 @@ export class TreeEngine {
       // splitProb: low splitLevel → laterals; high → Y-forks
       const splitProb = Math.pow(this.splitLevel, 1.5);
       if (Math.random() < splitProb) {
+        toSplit.push(branch);
+      } else {
+        toLateral.push(branch);
+      }
+    }
+
+    for (const branch of toSplit) this.splitBranch(branch);
+    for (const branch of toLateral) this.lateralFromBranch(branch);
+  }
+
+  /**
+   * update() — mode-based growth:
+   *  - grow: elongate segments, autoSplit fires using current splitLevel
+   *  - wobble/split/bloom: parameter adjustments done externally; only time advances
+   *  Always: thicken, recalculate radii, sync leaves
+   */
+  update(dt: number, thicknessRate: number, breathEnergy: number = 0) {
+    const mode = this.growthMode;
+    const rate = thicknessRate;
+
+    this.time += dt;
+    // No passive aging — seg.age is controlled exclusively by grow/shrink.
+    // This lets it return cleanly to 0 (small initial radius) on full de-grow.
+
+    if (breathEnergy > 0) {
+      switch (mode) {
+        case 'grow':
+          this.applyGrowth(breathEnergy);
+          break;
+        case 'bloom':
+          this.applyBloomGrowth(breathEnergy);
+          break;
+      }
+    }
+
+    const lerpFactor = 1 - Math.exp(-dt * 45);
+    this.retroactiveReplay(lerpFactor);
+
+    this.recalculateAll(rate);
+    this.syncLeafPositions();
+
+    // Per-frame orphaned leaf purge — catches any leaf whose branch was removed
+    // between shrink() calls and this update tick.
+    {
+      const liveIds = new Set(this.branches.map(b => b.id));
+      this.leaves = this.leaves.filter(l => liveIds.has(l.branchId));
+    }
+
+    this.updateLeaves(dt);
+  }
+
