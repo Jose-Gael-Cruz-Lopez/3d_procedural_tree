@@ -763,3 +763,54 @@ export function TreeScene({
       if (fill <= 0 || count <= 0) return { stems: new Float32Array(0), tops: new Float32Array(0) };
       const sp: number[] = [], tp: number[] = [];
       const n = Math.min(count, gStemPool.length);
+      for (let i = 0; i < n; i++) {
+        const s = gStemPool[i];
+        const baseY = terrainNoise(s.x, s.z);
+        const h = s.maxH * fill;
+
+        if (s.type === 0) {
+          // Fern: vertical spine + lateral frond pairs
+          const segs = Math.max(2, Math.round(4 * fill));
+          for (let seg = 0; seg <= segs; seg++) {
+            const t = seg / segs;
+            const sx = s.x + s.leanX * t, sy = baseY + t * h, sz = s.z + s.leanZ * t;
+            sp.push(sx, sy, sz);
+            if (seg > 0 && seg < segs) {
+              const fl = (1 - t) * h * 0.38;
+              const px = -s.leanZ * 6 + 0.001, pz = s.leanX * 6;
+              const pn = Math.sqrt(px * px + pz * pz) || 1;
+              sp.push(sx + (px / pn) * fl, sy - fl * 0.08, sz + (pz / pn) * fl);
+              sp.push(sx - (px / pn) * fl, sy - fl * 0.08, sz - (pz / pn) * fl);
+              // extra midpoint per frond for more bulk
+              sp.push(sx + (px / pn) * fl * 0.5, sy, sz + (pz / pn) * fl * 0.5);
+              sp.push(sx - (px / pn) * fl * 0.5, sy, sz - (pz / pn) * fl * 0.5);
+            }
+          }
+        } else if (s.type === 1) {
+          // Grass fan: 5-8 arcing blades from same base
+          const bladeCount = 5 + Math.floor(s.rand * 4);
+          for (let b = 0; b < bladeCount; b++) {
+            const angle = (b / bladeCount) * Math.PI * 2 + s.rand;
+            const lean = 0.28 + s.rand * 0.45;
+            const bPoints = 3 + Math.round(fill * 3);
+            for (let p = 0; p <= bPoints; p++) {
+              const t = p / bPoints;
+              const curve = t * t;
+              sp.push(
+                s.x + Math.cos(angle) * curve * lean * h,
+                baseY + t * h * (1 - curve * 0.35),
+                s.z + Math.sin(angle) * curve * lean * h,
+              );
+            }
+          }
+        } else if (s.type === 2) {
+          // Bush dome: ellipsoidal cluster of points (Fibonacci sphere)
+          const dotCount = Math.round(10 + fill * 18);
+          const rx = h * 0.62, ry = h * 0.55, rz = h * 0.62;
+          for (let d = 0; d < dotCount; d++) {
+            const phi   = Math.acos(1 - 2 * (d + 0.5) / dotCount);
+            const theta = Math.PI * (1 + Math.sqrt(5)) * d;
+            sp.push(
+              s.x + rx * Math.sin(phi) * Math.cos(theta),
+              baseY + h * 0.35 + ry * (Math.cos(phi) * 0.5 + 0.5),
+              s.z + rz * Math.sin(phi) * Math.sin(theta),
