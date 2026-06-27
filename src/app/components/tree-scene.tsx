@@ -508,3 +508,54 @@ export function TreeScene({
 
     // Terrain
     const terrainGeom = new THREE.BufferGeometry();
+    terrainGeomRef.current = terrainGeom;
+    terrainGeom.setAttribute('position', new THREE.BufferAttribute(generateTerrainPoints(terrainDensityRef.current), 3));
+    const terrainPoints = new THREE.Points(terrainGeom, terrainMat);
+    terrainPoints.renderOrder = 0;  // ground renders first
+    scene.add(terrainPoints);
+
+    // Herbs
+    const herbMat = mkMatFlat('#8aaa78', 2.5, 0.45, true);
+    const herbGeom = new THREE.BufferGeometry();
+    herbGeom.setAttribute('position', new THREE.BufferAttribute(generateHerbPoints(), 3));
+    const herbPoints = new THREE.Points(herbGeom, herbMat);
+    herbPoints.renderOrder = 1;
+    scene.add(herbPoints);
+    herbMaterialRef.current = herbMat;
+
+    // Terrain flowers layer 1
+    const tFlowerColor = terrainFlowerColors.length > 0 ? terrainFlowerColors[0] : '#ffffff';
+    const tFlowerMat = mkMatFlat(tFlowerColor, 2.0, 1, false);
+    const tFlowerGeom = new THREE.BufferGeometry();
+    tFlowerGeom.setAttribute('position', new THREE.BufferAttribute(generateTerrainFlowers(), 3));
+    const tFlowerPoints = new THREE.Points(tFlowerGeom, tFlowerMat);
+    tFlowerPoints.renderOrder = 2;
+    scene.add(tFlowerPoints);
+    tFlowerMaterialRef.current = tFlowerMat;
+
+    // Terrain flowers layer 2
+    let tFlowerMat2: THREE.PointsMaterial | null = null;
+    let tFlowerGeom2: THREE.BufferGeometry | null = null;
+    if (terrainFlowerColors.length > 1) {
+      tFlowerMat2 = mkMatFlat(terrainFlowerColors[1], 1.8, 1, false);
+      tFlowerGeom2 = new THREE.BufferGeometry();
+      tFlowerGeom2.setAttribute('position', new THREE.BufferAttribute(generateTerrainFlowers(), 3));
+      const tFlowerPoints2 = new THREE.Points(tFlowerGeom2, tFlowerMat2);
+      tFlowerPoints2.renderOrder = 3;
+      scene.add(tFlowerPoints2);
+      tFlowerMaterial2Ref.current = tFlowerMat2;
+    }
+
+    // Initialize smooth-color targets from initial prop values
+    targetStemColorRef.current   = new THREE.Color(stemColorRef.current);
+    targetLeafColorRef.current   = new THREE.Color(leafColorRef.current);
+    targetCenterColorRef.current = new THREE.Color(flowerCenterColorRef.current);
+
+    // ── Ground flora pools — fixed random positions, generated once ──────────
+    // Flowers: bloom-driven. Each entry has all randomness pre-baked so
+    // rebuilding the geometry at a new count never causes positional jitter.
+
+    // Spoke-sort: buckets items into N angular sectors sorted near→far, then
+    // interleaves. At any count prefix every angular direction is represented equally.
+    // This prevents the directional bias that a plain sort-by-noisy-key creates —
+    // the phase offsets in multi-octave noise produce systematically lower key values
