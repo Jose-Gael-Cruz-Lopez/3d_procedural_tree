@@ -127,3 +127,46 @@ export default function App() {
         autoGrow
       />
 
+      {isMobile ? (
+        /* ══════════════ MOBILE LAYOUT ══════════════ */
+        <>
+          {/* TOP BAR: Reset */}
+          <div className="absolute top-3 left-0 right-0 z-20 flex justify-center" style={{ pointerEvents: 'none' }}>
+            <div style={{ pointerEvents: 'auto' }}>
+              <button
+                onClick={handleRestart}
+                style={{
+                  padding: '5px 14px', borderRadius: 20, border: '1.5px solid rgba(200,160,90,0.18)',
+                  cursor: 'pointer', background: 'rgba(255,248,232,0.92)',
+                  backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  color: 'rgba(55, 35, 12, 0.45)', fontSize: '12px',
+                  boxShadow: '0 2px 12px rgba(120,80,20,0.07)',
+                }}
+                title="Reset tree"
+              >
+                <span>↺</span>
+                <span className="uppercase tracking-[0.10em]" style={{ fontSize: '8px' }}>Reset</span>
+              </button>
+            </div>
+          </div>
+
+          {/* BOTTOM: Tree type selector */}
+          <div
+            className="absolute bottom-0 left-0 right-0 z-10 flex justify-center"
+            style={{ paddingBottom: 16, pointerEvents: 'none' }}
+          >
+            <div
+              style={{
+                pointerEvents: 'auto', maxWidth: '100vw',
+                overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+                display: 'flex', alignItems: 'center',
+                padding: '0 12px', scrollbarWidth: 'none',
+              }}
+            >
+              <div style={{
+                background: 'rgba(255,248,232,0.88)',
+                backdropFilter: 'blur(28px) saturate(120%)',
+                WebkitBackdropFilter: 'blur(28px) saturate(120%)',
+                border: '1.5px solid rgba(200,160,90,0.20)',
+                boxShadow: '0 4px 24px rgba(100,65,15,0.10)',
