@@ -355,3 +355,54 @@ export function TreeScene({
     if (flowerCenterMaterialRef.current) flowerCenterMaterialRef.current.opacity = leafOpacity;
   }, [leafOpacity]);
 
+  useEffect(() => {
+    terrainColorRef.current = terrainColor;
+    if (terrainMaterialRef.current) terrainMaterialRef.current.color.set(terrainColor);
+  }, [terrainColor]);
+
+  useEffect(() => {
+    terrainOpacityRef.current = terrainOpacity;
+    if (terrainMaterialRef.current) terrainMaterialRef.current.opacity = terrainOpacity;
+  }, [terrainOpacity]);
+
+  useEffect(() => {
+    flowerCenterColorRef.current = flowerCenterColor;
+    targetCenterColorRef.current?.set(flowerCenterColor);
+    if (gFlowerCenterMatRef.current) gFlowerCenterMatRef.current.color.set(flowerCenterColor);
+  }, [flowerCenterColor]);
+
+  useEffect(() => {
+    terrainDensityRef.current = terrainDensity;
+    if (terrainGeomRef.current) {
+      const pts = generateTerrainPoints(terrainDensity);
+      terrainGeomRef.current.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+      terrainGeomRef.current.computeBoundingSphere();
+    }
+  }, [terrainDensity]);
+
+  useEffect(() => {
+    if (tFlowerMaterialRef.current && terrainFlowerColors.length > 0) {
+      tFlowerMaterialRef.current.color.set(terrainFlowerColors[0]);
+    }
+    if (tFlowerMaterial2Ref.current && terrainFlowerColors.length > 1) {
+      tFlowerMaterial2Ref.current.color.set(terrainFlowerColors[1]);
+    }
+  }, [terrainFlowerColors]);
+
+  // ── Main Three.js setup (runs once) ─────────────────────────────────────────
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(BG_COLOR);
+    // Atmospheric fog: tighter — cuts off quickly to show less terrain
+    scene.fog = new THREE.Fog(BG_COLOR, 8, 18);
+
+    const w = container.clientWidth, h = container.clientHeight;
+    const camera = new THREE.PerspectiveCamera(42, w / h, 0.01, 200);
+    // Ligeramente elevada para una vista más aérea y acogedora
+    camera.position.set(0, 3.5, 10);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
