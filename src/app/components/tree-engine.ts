@@ -1273,3 +1273,54 @@ export class TreeEngine {
         if (seg.position.y > maxY) maxY = seg.position.y;
       }
     }
+    return maxY;
+  }
+
+  /** Retorcer: bend all active branch tips strongly and re-seed their noise */
+  retorcer() {
+    for (const branch of this.branches) {
+      if (!branch.active || branch.segments.length < 1) continue;
+      // Strong random bend
+      const angle = (0.5 + Math.random() * 0.9) * (Math.random() < 0.5 ? 1 : -1);
+      const bendAxis = new THREE.Vector3(
+        Math.random() - 0.5,
+        (Math.random() - 0.4) * 0.3,
+        Math.random() - 0.5,
+      ).normalize();
+      branch.direction.applyAxisAngle(bendAxis, angle);
+      branch.direction.y = Math.max(branch.direction.y, 0.04);
+      branch.direction.normalize();
+      // Re-seed noise so the twist looks different going forward
+      branch.noiseOffset.set(
+        Math.random() * 1000,
+        Math.random() * 1000,
+        Math.random() * 1000,
+      );
+      // Boost wobble for an organic, twisting look
+      branch.wobble = Math.min(branch.wobble * 1.8 + 0.25, 1.6);
+      // Stamp direction onto last segment so next growBranch uses it
+      const last = branch.segments[branch.segments.length - 1];
+      last.direction.copy(branch.direction);
+    }
+  }
+
+  /** Dividir: force immediate splits/laterals on all active branches */
+  forceDividir() {
+    const candidates = this.branches.filter(
+      b => b.active && b.depth < this.maxDepth && b.segments.length >= 2,
+    );
+    if (candidates.length === 0) return;
+    for (const branch of candidates) {
+      const splitProb = 0.65 - this.naturalness * 0.25;
+      if (Math.random() < splitProb) {
+        this.splitBranch(branch);
+      } else {
+        this.lateralFromBranch(branch);
+      }
+    }
+  }
+
+  /**
+   * Shrink / rewind — mirror image of applyGrowth().
+   *
+   * applyGrowth() iterates ALL active main branches and adds one segment each tick.
