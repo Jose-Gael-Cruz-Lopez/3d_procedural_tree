@@ -908,6 +908,20 @@ export function TreeScene({
     let lastTime = performance.now();
     let animId   = 0;
 
+    // ── Cinematic camera move on growth completion ──────────────────────────
+    // Once the tree finishes growing & blooming, glide at a steady pace to an
+    // elevated, pulled-back framing, then settle (user can orbit freely after).
+    //   phase 0 = idle, 1 = gliding to final angle, 2 = settled
+    let cinePhase    = 0;
+    let cineT        = 0;
+    const CINE_DUR        = 5.0;                              // seconds — steady glide
+    const CINE_TARGET_POL = THREE.MathUtils.degToRad(80);    // polar angle: gently elevated side view
+    const CINE_TARGET_RAD = 8;                               // close enough to stay crisp (clear of fog)
+    const CINE_SPIN_SPEED = 1.2;                             // turntable speed once settled (~50s per 360°)
+    let cineStartPol = 0;
+    let cineStartRad = 0;
+    let cineAz       = 0;                                    // frozen azimuth — no horizontal swing
+
     // ── Scroll-wheel state ────────────────────────────────────────────────────
     // Sistema inercial: cada evento acumula velocidad; decae sola sin latch.
     let scrollVelocity = 0;   // unidades/s de param delta
