@@ -133,3 +133,48 @@ function TreeIcon({ id, color, selected }: { id: string; color: string; selected
         <ellipse key={i} cx={x} cy={y} rx="1.6" ry="1.25" fill={color} opacity={0.88 - i * 0.07}/>
       ))}
       {[[16,9.5],[15.2,12],[16.8,12],[16,14.5]].map(([x,y],i) => (
+        <ellipse key={i} cx={x} cy={y} rx="1.7" ry="1.3" fill={color} opacity={0.85 - i * 0.07}/>
+      ))}
+    </svg>
+  );
+
+  if (id === 'orange') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={{ opacity: op }}>
+      <line x1="12" y1="22" x2="12" y2="13" stroke="#6a4a20" strokeWidth="2" strokeLinecap="round"/>
+      <ellipse cx="12" cy="10" rx="8" ry="7" fill={color} opacity="0.30"/>
+      <ellipse cx="7"  cy="12" rx="4" ry="5" fill={color} opacity="0.25"/>
+      <ellipse cx="17" cy="12" rx="4" ry="5" fill={color} opacity="0.25"/>
+      <ellipse cx="12" cy="6"  rx="5" ry="4" fill={color} opacity="0.22"/>
+      <ellipse cx="12" cy="10" rx="7.5" ry="6.5" fill={color} opacity="0.20"/>
+      <circle cx="9"  cy="11" r="2.0" fill="#ff8800" />
+      <circle cx="15" cy="13" r="1.8" fill="#ff8800" />
+      <circle cx="12" cy="15" r="1.6" fill="#ff9a10" />
+    </svg>
+  );
+
+  if (id === 'olive') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={{ opacity: op }}>
+      <line x1="12" y1="22" x2="12" y2="5" stroke={color} strokeWidth="1.8" strokeLinecap="round" opacity="0.7"/>
+      <ellipse cx="8"  cy="9"  rx="5.2" ry="3.0" fill={color} transform="rotate(-28,8,9)"/>
+      <ellipse cx="16" cy="13" rx="5.2" ry="3.0" fill={color} opacity="0.88" transform="rotate(28,16,13)"/>
+      <ellipse cx="8"  cy="17" rx="4.8" ry="2.8" fill={color} opacity="0.76" transform="rotate(-22,8,17)"/>
+    </svg>
+  );
+
+  if (id === 'almond') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={{ opacity: op }}>
+      {[0, 60, 120, 180, 240, 300].map(a => (
+        <ellipse key={a} cx="12" cy="5.5" rx="2.5" ry="4.2"
+          fill={color} stroke="rgba(100,65,20,0.45)" strokeWidth="1.0"
+          transform={`rotate(${a},12,12)`}/>
+      ))}
+      <circle cx="12" cy="12" r="2.3" fill="#f5e060" stroke="rgba(120,80,30,0.40)" strokeWidth="0.8"/>
+    </svg>
+  );
+
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={{ opacity: op }}>
+      <circle cx="12" cy="12" r="8" stroke={color} strokeWidth="1.8" fill="none" strokeDasharray="3 2"/>
+      <circle cx="12" cy="12" r="3" fill={color} opacity="0.6"/>
+    </svg>
+  );
