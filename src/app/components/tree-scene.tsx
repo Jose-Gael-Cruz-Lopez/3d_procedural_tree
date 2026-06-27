@@ -1120,3 +1120,54 @@ export function TreeScene({
         } else if (mode === 'bloom') {
           const prev = t.bloom;
           t.bloom = Math.max(0, Math.min(1, t.bloom + delta));
+          eng.bloomLevel = Math.max(0, Math.min(ranges.bloom[1], t.bloom * ranges.bloom[1]));
+          if (Math.abs(t.bloom - prev) > 0.001 && soundCooldown.bloom <= 0) {
+            delta > 0 ? SFX.paramTick('bloom') : SFX.paramDownTick('bloom');
+            soundCooldown.bloom = SOUND_CD.bloom;
+          }
+        }
+      };
+
+      // Button held → continuously increase/decrease current param (all modes)
+      if (paramButtonHeldRef.current) {
+        applyParamDelta(0.22 * dt);
+      }
+      if (paramButtonDecRef.current) {
+        applyParamDelta(-0.22 * dt);
+      }
+
+      // Auto-grow: drive grow to 100%; bloom starts at 50%
+      if (autoGrowRef.current) {
+        if (eng.sizeFill < 1.0) {
+          energy += 0.22 * dt * BASE_GROW * growSpeedRef.current;
+          if (soundCooldown.grow <= 0) { SFX.growTick(); soundCooldown.grow = SOUND_CD.grow; }
+        }
+        if (eng.sizeFill >= 0.5 && paramTRef.current.bloom < 1.0) {
+          const ranges = paramRangesRef.current;
+          const t = paramTRef.current;
+          const prev = t.bloom;
+          t.bloom = Math.min(1, t.bloom + 0.22 * dt);
+          eng.bloomLevel = Math.max(0, Math.min(ranges.bloom[1], t.bloom * ranges.bloom[1]));
+          if (Math.abs(t.bloom - prev) > 0.001 && soundCooldown.bloom <= 0) {
+            SFX.paramTick('bloom');
+            soundCooldown.bloom = SOUND_CD.bloom;
+          }
+        }
+        if (eng.sizeFill >= 1.0 && paramTRef.current.bloom >= 1.0 && paramTRef.current.wobble < 0.8) {
+          const ranges = paramRangesRef.current;
+          const t = paramTRef.current;
+          const prev = t.wobble;
+          t.wobble = Math.min(0.8, t.wobble + 0.22 * dt);
+          eng.growthParams.wobble = ranges.wobble[0] + t.wobble * (ranges.wobble[1] - ranges.wobble[0]);
+          if (Math.abs(t.wobble - prev) > 0.001 && soundCooldown.wobble <= 0) {
+            SFX.paramTick('wobble');
+            soundCooldown.wobble = SOUND_CD.wobble;
+          }
+        }
+      }
+
+      // ── Hand openness → param control ────────────────────────────────────
+      // This is the primary driver when camera mode is active:
+      // right hand pinch open = increase, closed = decrease
+      {
+        const ho = handOpenness.current;
