@@ -559,3 +559,54 @@ export class TreeEngine {
     // bl=0.05→blEff=0.011  bl=0.1→0.032  bl=0.3→0.164  bl=0.7→0.586  bl=1→1.0
     const bl    = this.bloomLevel;
     const blEff = Math.pow(bl, 1.5);
+
+    // Spawn interval: denser at high bloom
+    const baseInterval = Math.max(1, Math.round(
+      (3 - this.leafDensity * 2) * (1 - blEff * 0.92)
+    ));
+
+    // Height-based bloom: compute max tip-Y across all branches so we can normalize
+    let maxBranchY = 0.01;
+    for (const b of this.branches) {
+      if (b.segments.length > 0) {
+        const tipY = b.segments[b.segments.length - 1].position.y;
+        if (tipY > maxBranchY) maxBranchY = tipY;
+      }
+    }
+
+    // Per-branch tipSegCount: PROPORTIONAL to that branch's own length × blEff × heightFactor.
+    // This is the key to symmetric increase/decrease:
+    //   - bloom ↑ → frac grows → more segments from tip become visible (smooth in)
+    //   - bloom ↓ → frac shrinks → segments from base toward tip fade out (smooth out)
+    // No global maxTipSegs constant that exceeds branch length and makes tc=totalSegs at any bloom.
+    const branchTipCount = (branch: Branch): number => {
+      if (blEff <= 0) return 0;
+      const totalSegs = branch.segments.length;
+      if (totalSegs < 2) return 0;
+      const tipY = branch.segments[totalSegs - 1].position.y;
+      const heightRatio = Math.max(0, tipY / maxBranchY);
+      // pow(3): concentrates bloom in top canopy; bottom 40% of height gets <6%
+      const heightFactor = Math.pow(heightRatio, 3);
+      if (heightFactor < 0.005) return 0;
+      // frac: at blEff=1 + top branch → 1.0 (all segs show). At blEff=0.3 → ~0.27.
+      // ×1.8 so full coverage arrives around bloom=0.75 for top branches rather than bloom=1.
+      const frac = Math.min(1, blEff * heightFactor * 1.8);
+      return Math.round(totalSegs * frac);
+    };
+
+    const childMap = new Map<number, number[]>();
+    for (const b of this.branches) {
+      if (b.parentBranchId !== null) {
+        const list = childMap.get(b.parentBranchId) || [];
+        list.push(b.id);
+        childMap.set(b.parentBranchId, list);
+      }
+    }
+
+    const hasActiveDescendant = (branchId: number): boolean => {
+      const branch = branchMap.get(branchId);
+      if (!branch) return false;
+      if (branch.active) return true;
+      const children = childMap.get(branchId);
+      // Terminal inactive branch: stopped at maxDepth with no children (not shrunk away).
+      // Treat as "alive" so its leaves stay visible — they'll be removed when the branch
