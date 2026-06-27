@@ -217,53 +217,5 @@ interface TreeTypePanelProps {
 }
 
 export function TreeTypePanel({ selectedType, onSelectType, onRestart }: TreeTypePanelProps) {
-  return (
-    <>
-      {/* ── Bottom centre: tree type buttons ── */}
-      <div
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 select-none"
-      >
-        <div style={{
-          ...COZY,
-          borderRadius: 24,
-          padding: '3px 6px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0,
-        }}>
-          {TREE_TYPES.map((t) => (
-            <TreeButton key={t.id} t={t} isSelected={selectedType === t.id} onSelectType={onSelectType} />
-          ))}
-        </div>
-      </div>
-
-      {/* ── Bottom right: Reset ── */}
-      <div
-        className="absolute bottom-6 right-6 z-10 select-none"
-        style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}
-      >
-        <div style={{
-          ...COZY, borderRadius: 24,
-          padding: '4px 6px',
-          display: 'flex', alignItems: 'center', gap: 2,
-        }}>
-          {/* Reset */}
-          <button
-            onClick={onRestart}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-              padding: '10px 12px 9px', borderRadius: 16, border: 'none', cursor: 'pointer',
-              background: 'transparent', transition: 'all 0.18s ease',
-            }}
-          >
-            <span style={{ fontSize: 17, lineHeight: 1, color: MUTED, opacity: 0.7 }}>↺</span>
-            <span style={{ fontSize: '9px', color: MUTED,
-              textTransform: 'uppercase', letterSpacing: '0.09em', lineHeight: 1 }}>
-              Reset
-            </span>
-          </button>
-        </div>
-      </div>
-    </>
-  );
+  return null;
 }
