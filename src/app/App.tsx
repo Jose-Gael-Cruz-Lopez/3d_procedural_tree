@@ -170,3 +170,46 @@ export default function App() {
                 WebkitBackdropFilter: 'blur(28px) saturate(120%)',
                 border: '1.5px solid rgba(200,160,90,0.20)',
                 boxShadow: '0 4px 24px rgba(100,65,15,0.10)',
+                borderRadius: 24, padding: '3px 6px',
+                display: 'flex', alignItems: 'center', gap: 0,
+              }}>
+                {TREE_TYPES.map((t) => {
+                  const isSelected = treeType.id === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => handleSelectType(t)}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                        padding: '6px 9px 5px',
+                        background: isSelected ? `${t.accentColor}1e` : 'transparent',
+                        border: 'none', outline: 'none', borderRadius: 16, cursor: 'pointer',
+                        transition: 'background 0.22s ease',
+                      }}
+                    >
+                      <span style={{ fontSize: 16, lineHeight: 1 }}>
+                        {t.id === 'sakura' ? '🌸' : t.id === 'maple' ? '🍁' : t.id === 'wisteria' ? '💜' : t.id === 'orange' ? '🍊' : t.id === 'olive' ? '🫒' : '🌼'}
+                      </span>
+                      <span style={{
+                        fontSize: '8px', letterSpacing: '0.07em', textTransform: 'uppercase',
+                        color: isSelected ? 'rgba(55,35,12,0.78)' : 'rgba(55,35,12,0.38)',
+                        lineHeight: 1, whiteSpace: 'nowrap', transition: 'color 0.2s',
+                      }}>{t.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* ══════════════ DESKTOP LAYOUT ══════════════ */
+        <TreeTypePanel
+          selectedType={treeType.id}
+          onSelectType={handleSelectType}
+          onRestart={handleRestart}
+        />
+      )}
+    </div>
+  );
+}
