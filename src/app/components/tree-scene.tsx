@@ -1171,3 +1171,54 @@ export function TreeScene({
       // right hand pinch open = increase, closed = decrease
       {
         const ho = handOpenness.current;
+        if (ho >= 0) {
+          const DEAD_LO = 0.20, DEAD_HI = 0.45;
+          const HAND_SPEED = 0.38;
+          if (ho > DEAD_HI) {
+            applyParamDelta( HAND_SPEED * dt * (ho - DEAD_HI) / (1 - DEAD_HI));
+          } else if (ho < DEAD_LO) {
+            applyParamDelta(-HAND_SPEED * dt * (DEAD_LO - ho) / DEAD_LO);
+          }
+        }
+      }
+
+      // Decay per-mode sound cooldowns
+      for (const k in soundCooldown) { if (soundCooldown[k] > 0) soundCooldown[k] -= dt; }
+
+      // ── Scroll inertia: accumulated velocity decays naturally ─────────────
+      if (Math.abs(scrollVelocity) > 0.0003) {
+        applyParamDelta(scrollVelocity * dt);
+        scrollVelocity *= 0.75;
+      } else {
+        scrollVelocity = 0;
+      }
+
+      eng.update(dt, thicknessRateRef.current, energy);
+
+      // ── Ground flora update — smooth lerp per frame, geometry rebuild on integer change ──
+      {
+        const curBloom = eng.bloomLevel;
+        const curGrow  = eng.sizeFill;
+
+        // Bloom flowers: only when foliageMode !== 'leaves', driven by bloom×grow combined
+        const showBloomFlowers = foliageModeRef.current !== 'leaves';
+        const bloomSignal = showBloomFlowers && curBloom > 0.06
+          ? Math.pow(Math.max(0, (curBloom - 0.06) / 0.94), 1.1) * Math.pow(Math.max(0, curGrow), 0.4)
+          : 0;
+        const targetGF = bloomSignal * GF_POOL;
+
+        // Herbs and wild: always, purely grow-driven
+        const targetGH = Math.pow(Math.max(0, curGrow), 0.65) * GH_POOL;
+        const targetGW = Math.pow(Math.max(0, curGrow), 0.55) * GW_POOL;
+        const targetGS = Math.pow(Math.max(0, curGrow), 0.55) * GS_POOL;
+
+        // Lerp smoothly: slower to appear (organic feel), faster to disappear
+        const alphaF = 1 - Math.exp(-(targetGF > smoothGFlower ? 1.2 : 3.0) * dt);
+        const alphaH = 1 - Math.exp(-(targetGH > smoothGHerb  ? 1.8 : 3.5) * dt);
+        const alphaW = 1 - Math.exp(-(targetGW > smoothGWild  ? 1.5 : 3.0) * dt);
+        const alphaS = 1 - Math.exp(-(targetGS > smoothGStem  ? 1.5 : 3.0) * dt);
+        smoothGFlower += (targetGF - smoothGFlower) * alphaF;
+        smoothGHerb   += (targetGH - smoothGHerb)   * alphaH;
+        smoothGWild   += (targetGW - smoothGWild)    * alphaW;
+        smoothGStem   += (targetGS - smoothGStem)    * alphaS;
+
