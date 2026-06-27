@@ -1069,3 +1069,54 @@ export class TreeEngine {
     const sorted = this.branches.slice().sort((a, b) => a.depth - b.depth);
     const tDir = new THREE.Vector3();
     const tPos = new THREE.Vector3();
+
+    for (const branch of sorted) {
+      if (branch.segments.length === 0) continue;
+
+      // Reconnect child root to moving parent segment
+      if (branch.parentBranchId !== null) {
+        this.computeChildRoot(branch, branchMap, gp);
+      }
+
+      let prevPos = branch.segments[0].position;
+      let prevDir = branch.segments[0].direction;
+
+      for (let i = 1; i < branch.segments.length; i++) {
+        const seg = branch.segments[i];
+        const si = seg.segIndex;
+        const noiseScale = 0.4;
+        const timeScale = 0.3;
+        const nx = this.noise3(
+          branch.noiseOffset.x + si * 0.15,
+          seg.creationTime * timeScale,
+          branch.noiseOffset.z
+        );
+        const nz = this.noise3(
+          branch.noiseOffset.y,
+          seg.creationTime * timeScale,
+          branch.noiseOffset.z + si * 0.15
+        );
+        const wobbleScale = 0.1 + gp.wobble * 1.4;
+
+        // Target direction: wobble curvature
+        tDir.copy(prevDir).add(
+          _v1.set(
+            nx * branch.wobble * noiseScale * wobbleScale,
+            0,
+            nz * branch.wobble * noiseScale * wobbleScale
+          )
+        );
+
+        // Gravity: bias Y continuously — INVERTED: high gravity = drooping
+        const gravBias = -(gp.gravity - 0.5) * 0.20;
+        tDir.y += gravBias;
+        // INVERTED: low gravity = upright (minY high), high gravity = droop (minY can be negative)
+        const minY = 0.75 - gp.gravity * 0.80;
+        tDir.y = Math.max(tDir.y, minY);
+        tDir.normalize();
+
+        // Target position
+        tPos.copy(prevPos).addScaledVector(tDir, gp.stepSize);
+
+        // Smooth lerp toward target
+        seg.direction.lerp(tDir, lerpFactor).normalize();
