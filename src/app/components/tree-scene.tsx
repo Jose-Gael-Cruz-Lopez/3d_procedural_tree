@@ -151,3 +151,54 @@ function generateTerrainFlowers(): Float32Array {
 }
 
 export function TreeScene({
+  pointSize, stemColor, leafColor, leafDensity,
+  stemOpacity, leafOpacity, terrainOpacity, terrainColor,
+  terrainFlowerColors, terrainDensity, thicknessRate, naturalness, splitLevel, foliageMode, leafShape,
+  flowerCenterColor, growthParams, growthMode,
+  growSpeed, paramRanges,
+  handOpenness,
+  cameraControl,
+  onRestart, onGrowPress, onGrowRelease, onParamDecPress, onParamDecRelease,
+  onBreathStateChange, onParamLevelChange,
+  onGrowFillChange,
+  autoGrow = false,
+}: TreeSceneProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const engineRef    = useRef<TreeEngine | null>(null);
+
+  // Material refs
+  const stemMaterialRef        = useRef<THREE.PointsMaterial | null>(null);
+  const leafMaterialRef        = useRef<THREE.PointsMaterial | null>(null);
+  const petioleMaterialRef     = useRef<THREE.PointsMaterial | null>(null);
+  const flowerCenterMaterialRef = useRef<THREE.PointsMaterial | null>(null);
+  const terrainMaterialRef     = useRef<THREE.PointsMaterial | null>(null);
+  const terrainGeomRef         = useRef<THREE.BufferGeometry | null>(null);
+  const herbMaterialRef        = useRef<THREE.PointsMaterial | null>(null);
+  const tFlowerMaterialRef     = useRef<THREE.PointsMaterial | null>(null);
+  const tFlowerMaterial2Ref    = useRef<THREE.PointsMaterial | null>(null);
+  // Ground flora — bloom-driven flowers + grow-driven herbs
+  const gFlowerPetalGeomRef   = useRef<THREE.BufferGeometry | null>(null);
+  const gFlowerCenterGeomRef  = useRef<THREE.BufferGeometry | null>(null);
+  const gHerbExtraGeomRef     = useRef<THREE.BufferGeometry | null>(null);
+  const gFlowerPetalMatRef    = useRef<THREE.PointsMaterial | null>(null);
+  const gFlowerCenterMatRef   = useRef<THREE.PointsMaterial | null>(null);
+  // Wild microflower pool — grow-driven, always visible regardless of foliage mode
+  const gWildGeomRef          = useRef<THREE.BufferGeometry | null>(null);
+  const gWildMatRef           = useRef<THREE.PointsMaterial | null>(null);
+  // Vertical stem plants near base — grow-driven height AND count
+  const gStemGeomRef          = useRef<THREE.BufferGeometry | null>(null);
+  const gStemTopGeomRef       = useRef<THREE.BufferGeometry | null>(null);
+  const gStemMatRef           = useRef<THREE.PointsMaterial | null>(null);
+  const gStemTopMatRef        = useRef<THREE.PointsMaterial | null>(null);
+  
+  // Smooth color transition targets (updated when props change, lerped in animate loop)
+  const targetStemColorRef   = useRef<THREE.Color | null>(null);
+  const targetLeafColorRef   = useRef<THREE.Color | null>(null);
+  const targetCenterColorRef = useRef<THREE.Color | null>(null);
+
+  // Prop refs for animation-loop closure
+  const thicknessRateRef     = useRef(thicknessRate);
+  const leafDensityRef       = useRef(leafDensity);
+  const growthParamsRef      = useRef(growthParams);
+  const growthModeRef        = useRef(growthMode);
+  const naturalnessRef       = useRef(naturalness);
