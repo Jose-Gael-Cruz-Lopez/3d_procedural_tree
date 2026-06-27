@@ -1171,3 +1171,54 @@ export class TreeEngine {
     };
 
     for (const branch of this.branches) {
+      const pres = branch.presence;
+      if (pres < 0.01) continue;
+      const segs = branch.segments;
+
+      for (let si = 0; si < segs.length; si++) {
+        const seg = segs[si];
+        const r = seg.radius * pres;
+        if (r < 0.005) continue;
+
+        // ── Main ring at the segment's own position ──────────────────────
+        pushRing(
+          seg.position.x, seg.position.y, seg.position.z,
+          r,
+          seg.direction.x, seg.direction.y, seg.direction.z,
+        );
+
+        // ── One interpolated mid-ring between this segment and the next ──
+        // Doubles the visual ring density along every branch so trunks and
+        // ramifications look dense and well-defined without changing the
+        // underlying growth structure.
+        if (si < segs.length - 1) {
+          const next  = segs[si + 1];
+          const rNext = next.radius * pres;
+          _midPos.lerpVectors(seg.position, next.position, 0.5);
+          _midDir.lerpVectors(seg.direction, next.direction, 0.5);
+          const rMid = (r + rNext) * 0.5;
+          if (rMid >= 0.005) {
+            pushRing(
+              _midPos.x, _midPos.y, _midPos.z,
+              rMid,
+              _midDir.x, _midDir.y, _midDir.z,
+            );
+          }
+        }
+      }
+    }
+    return new Float32Array(allPoints);
+  }
+
+  getLeafPetiolePoints(): Float32Array {
+    const allPoints: number[] = [];
+    const presMap = new Map<number, number>();
+    for (const b of this.branches) presMap.set(b.id, b.presence);
+
+    for (const leaf of this.leaves) {
+      const pres = presMap.get(leaf.branchId) ?? 0;  // 0 = branch gone → skip render
+      const s = leaf.scale * pres;
+      if (s < 0.01) continue;
+      const fx = leaf.position.x, fy = leaf.position.y, fz = leaf.position.z;
+      for (let i = 0; i < leaf.petioleCount; i++) {
+        const p = leaf.points[i];
