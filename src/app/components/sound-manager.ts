@@ -118,9 +118,40 @@ function jitter(v: number, range: number) {
   return v + (Math.random() * 2 - 1) * range;
 }
 
+// ── Autoplay unlock ────────────────────────────────────────────────────────────
+// Browsers create the AudioContext suspended until a user gesture. With the UI
+// removed and the tree auto-growing, nothing else triggers a gesture — so we
+// resume (and prime) the context on the first interaction anywhere on the page.
+// After that, the procedural grow/bloom ticks become audible.
+function unlock() {
+  try {
+    const c = ctx();                 // creates the context and calls resume()
+    // Prime with a near-silent one-sample buffer so iOS/Safari fully opens
+    // the audio output path on the gesture.
+    const src = c.createBufferSource();
+    src.buffer = c.createBuffer(1, 1, 22050);
+    src.connect(c.destination);
+    src.start(0);
+  } catch (_) {}
+}
+
+if (typeof window !== 'undefined') {
+  const gestureEvents = ['pointerdown', 'keydown', 'touchstart'] as const;
+  const onFirstGesture = () => {
+    unlock();
+    gestureEvents.forEach(e => window.removeEventListener(e, onFirstGesture));
+  };
+  gestureEvents.forEach(e =>
+    window.addEventListener(e, onFirstGesture, { passive: true }),
+  );
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const SFX = {
+  // Resume/prime the AudioContext (auto-called on first user gesture).
+  unlock,
+
   // ── One-shot transition sounds ───────────────────────────────────────────
   grow()   { sweep(jitter(220, 20), jitter(440, 30), 0.16, 'sine', 0.045); },
   shrink() { sweep(jitter(330, 20), jitter(165, 20), 0.14, 'sine', 0.038); },
