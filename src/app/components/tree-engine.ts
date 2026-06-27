@@ -865,3 +865,54 @@ export class TreeEngine {
     const twist  = Math.random() * Math.PI * 2;
     const outDir = perp1.clone().multiplyScalar(Math.cos(twist))
       .add(perp2.clone().multiplyScalar(Math.sin(twist))).normalize();
+
+    const r = seg.radius;
+    const allPoints: THREE.Vector3[] = [];
+
+    // Fruit stalk (petiole)
+    const stemClear  = Math.max(seg.baseRadius, r) * 1.6;
+    const petioleLen = 0.018 + Math.random() * 0.022;
+    for (let i = 0; i <= 2; i++) {
+      const t = i / 2;
+      const d = r + stemClear + t * petioleLen;
+      allPoints.push(new THREE.Vector3(outDir.x * d, outDir.y * d, outDir.z * d));
+    }
+    const petioleCount = allPoints.length;
+
+    // Fruit body — dense sphere (centerCount → flowerCenterColor)
+    const fruitDist = r + stemClear + petioleLen;
+    const fOx = outDir.x * fruitDist;
+    const fOy = outDir.y * fruitDist;
+    const fOz = outDir.z * fruitDist;
+    const fruitR = (0.016 + Math.random() * 0.012) * Math.min(sizeMult, 1.6);
+    const fruitPts = 18 + Math.floor(Math.random() * 8);
+    for (let i = 0; i < fruitPts; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi   = Math.acos(2 * Math.random() - 1);
+      const rr    = fruitR * (0.65 + Math.random() * 0.35);
+      allPoints.push(new THREE.Vector3(
+        fOx + Math.sin(phi) * Math.cos(theta) * rr,
+        fOy + Math.sin(phi) * Math.sin(theta) * rr,
+        fOz + Math.cos(phi) * rr,
+      ));
+    }
+    const centerCount = fruitPts;
+
+    // Calyx — small leaf points around base (leafColor = green)
+    const calyxPts = 5 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < calyxPts; i++) {
+      const a  = (i / calyxPts) * Math.PI * 2;
+      const cr = fruitR * (0.7 + Math.random() * 0.5);
+      allPoints.push(new THREE.Vector3(
+        fOx + perp1.x * Math.cos(a) * cr + perp2.x * Math.sin(a) * cr,
+        fOy + perp1.y * Math.cos(a) * cr + perp2.y * Math.sin(a) * cr,
+        fOz + perp1.z * Math.cos(a) * cr + perp2.z * Math.sin(a) * cr,
+      ));
+    }
+
+    this.leaves.push({
+      position: seg.position.clone(),
+      points: allPoints,
+      petioleCount,
+      centerCount,
+      scale: 0,
