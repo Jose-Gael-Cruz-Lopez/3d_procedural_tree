@@ -661,3 +661,54 @@ export function TreeScene({
     scene.add(gFlowerCenterPts);
     scene.add(gHerbExtraPts);
 
+    gFlowerPetalGeomRef.current  = gFlowerPetalGeom;
+    gFlowerCenterGeomRef.current = gFlowerCenterGeom;
+    gHerbExtraGeomRef.current    = gHerbExtraGeom;
+    gFlowerPetalMatRef.current   = gFlowerPetalMat;
+    gFlowerCenterMatRef.current  = gFlowerCenterMat;
+
+    // Wild microflower pool — grow-driven, 5 colour sub-pools for variety
+    const WILD_COLORS = ['#f5e8b8', '#f0b8c0', '#d0bce8', '#a8d4e8', '#f8d498'];
+    const GW_PER = 200;                  // 200 per color × 5 = 1000 total
+    const GW_POOL = GW_PER * WILD_COLORS.length;
+    type WildFlower = { x: number; z: number; r: number; offsets: number[] };
+    const gWildSubPools: WildFlower[][] = WILD_COLORS.map(() => []);
+
+    for (let i = 0; i < GW_POOL; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const radius = Math.pow(Math.random(), 2.5) * 10;
+      const r = 0.01 + Math.random() * 0.016;
+      const offsets: number[] = [];
+      const petals = 5 + Math.floor(Math.random() * 6);
+      for (let p = 0; p < petals; p++) {
+        const pa = (p / petals) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+        offsets.push(Math.cos(pa), Math.sin(pa));
+      }
+      gWildSubPools[i % WILD_COLORS.length].push({
+        x: Math.cos(a) * radius, z: Math.sin(a) * radius, r, offsets,
+      });
+    }
+    gWildSubPools.forEach((pool, i) => { gWildSubPools[i] = spokeSort(pool); });
+
+    const buildWildSubPts = (pool: WildFlower[], count: number): Float32Array => {
+      const pts: number[] = [];
+      const n = Math.min(count, pool.length);
+      for (let i = 0; i < n; i++) {
+        const f = pool[i];
+        const y = terrainNoise(f.x, f.z);
+        pts.push(f.x, y + 0.015, f.z);
+        for (let p = 0; p < f.offsets.length / 2; p++) {
+          const ox = f.offsets[p * 2], oz = f.offsets[p * 2 + 1];
+          pts.push(f.x + ox * f.r,       y + 0.018, f.z + oz * f.r);
+          pts.push(f.x + ox * f.r * 0.5, y + 0.019, f.z + oz * f.r * 0.5);
+        }
+      }
+      return new Float32Array(pts);
+    };
+
+    // Create one geometry + material + Points per color
+    const gWildSubGeoms = WILD_COLORS.map(() => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+      return g;
+    });
