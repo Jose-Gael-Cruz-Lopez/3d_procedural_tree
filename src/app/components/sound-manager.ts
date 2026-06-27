@@ -78,3 +78,43 @@ function chime(hz: number, dur: number, vol: number) {
     // Fundamental
     const o1 = c.createOscillator(), g1 = c.createGain();
     o1.type = 'sine'; o1.frequency.value = hz;
+    o1.connect(g1); g1.connect(c.destination);
+    g1.gain.setValueAtTime(0.0001, now);
+    g1.gain.linearRampToValueAtTime(vol, now + atk);
+    g1.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    o1.start(now); o1.stop(now + dur + 0.01);
+
+    // Tierce partial (2.756×) — the signature bell colour
+    const o2 = c.createOscillator(), g2 = c.createGain();
+    o2.type = 'sine'; o2.frequency.value = hz * 2.756;
+    o2.connect(g2); g2.connect(c.destination);
+    g2.gain.setValueAtTime(0.0001, now);
+    g2.gain.linearRampToValueAtTime(vol * 0.38, now + atk);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.55);
+    o2.start(now); o2.stop(now + dur * 0.55 + 0.01);
+  } catch (_) {}
+}
+
+// Simple sweep (for transition sounds)
+function sweep(fromHz: number, toHz: number, dur: number, type: OscillatorType = 'sine', vol = 0.055) {
+  try {
+    const c = ctx();
+    const osc = c.createOscillator(), gain = c.createGain();
+    osc.connect(gain); gain.connect(c.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(fromHz, c.currentTime);
+    osc.frequency.linearRampToValueAtTime(toHz, c.currentTime + dur);
+    gain.gain.setValueAtTime(vol, c.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+    osc.start(c.currentTime); osc.stop(c.currentTime + dur + 0.02);
+  } catch (_) {}
+}
+
+function tone(hz: number, dur: number, type: OscillatorType = 'sine', vol = 0.05) {
+  sweep(hz, hz, dur, type, vol);
+}
+
+function jitter(v: number, range: number) {
+  return v + (Math.random() * 2 - 1) * range;
+}
+
