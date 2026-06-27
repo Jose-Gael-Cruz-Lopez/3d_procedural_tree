@@ -865,3 +865,54 @@ export function TreeScene({
             tp.push(s.x + Math.cos(ang) * r, topY + 0.004, s.z + Math.sin(ang) * r);
             tp.push(s.x + Math.cos(ang) * r * 0.5, topY + 0.006, s.z + Math.sin(ang) * r * 0.5);
           }
+        }
+      }
+      return { stems: new Float32Array(sp), tops: new Float32Array(tp) };
+    };
+
+    const gStemGeom    = new THREE.BufferGeometry();
+    const gStemTopGeom = new THREE.BufferGeometry();
+    gStemGeom.setAttribute(   'position', new THREE.BufferAttribute(new Float32Array(0), 3));
+    gStemTopGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+    const gStemMat    = mkMat('#8aaa78', ps * 1.15, 0.95, true);
+    const gStemTopMat = mkMat('#f5d0e0', ps * 1.45, 0.90, false);  // bigger pinkish caps
+    const gStemPts    = new THREE.Points(gStemGeom,    gStemMat);
+    const gStemTopPts = new THREE.Points(gStemTopGeom, gStemTopMat);
+    gStemPts.renderOrder    = 8;
+    gStemTopPts.renderOrder = 9;
+    scene.add(gStemPts);
+    scene.add(gStemTopPts);
+
+    gStemGeomRef.current    = gStemGeom;
+    gStemTopGeomRef.current = gStemTopGeom;
+    gStemMatRef.current     = gStemMat;
+    gStemTopMatRef.current  = gStemTopMat;
+
+    // Ground flora state — smooth float counts + throttled geometry rebuild
+    let groundAccum       = 0;
+    let smoothGFlower     = 0;   // smoothed float target counts
+    let smoothGHerb       = 0;
+    let smoothGWild       = 0;
+    let smoothGStem       = 0;
+    let lastBuiltFlower   = -1;
+    let lastBuiltHerb     = -1;
+    let lastBuiltWild     = -1;
+    let lastBuiltStem     = -1;
+    let lastBuiltFill     = -1;  // tracks sizeFill for stem height rebuild
+
+    // Dynamic zoom
+    let smoothedCamDist    = 9;
+    let userZoomMult       = 1.0;  // modified by hand pinch in camera mode
+    let currentMaxDist     = 12;   // tracks farthest auto-zoom
+    let pinchZoomOverride  = 0;    // seconds remaining where user pinch overrides auto-zoom
+    let lastTime = performance.now();
+    let animId   = 0;
+
+    // ── Scroll-wheel state ────────────────────────────────────────────────────
+    // Sistema inercial: cada evento acumula velocidad; decae sola sin latch.
+    let scrollVelocity = 0;   // unidades/s de param delta
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      // ── Scroll horizontal → rotar cámara azimutalmente ──────────────────
