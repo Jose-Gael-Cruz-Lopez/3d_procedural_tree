@@ -814,3 +814,54 @@ export function TreeScene({
               s.x + rx * Math.sin(phi) * Math.cos(theta),
               baseY + h * 0.35 + ry * (Math.cos(phi) * 0.5 + 0.5),
               s.z + rz * Math.sin(phi) * Math.sin(theta),
+            );
+          }
+        } else if (s.type === 3) {
+          // Flat rosette: horizontal oval leaf at ground level + central stem
+          const petalCount = 6 + Math.floor(s.rand * 5);
+          const lr = h * 0.55;
+          for (let p = 0; p < petalCount; p++) {
+            const angle = (p / petalCount) * Math.PI * 2;
+            for (let dot = 0; dot < 4; dot++) {
+              const t = (dot + 0.5) / 4;
+              sp.push(
+                s.x + Math.cos(angle) * lr * t,
+                baseY + 0.01 + dot * 0.007,
+                s.z + Math.sin(angle) * lr * t,
+              );
+            }
+          }
+          // Central stem
+          const stemSegs = Math.round(fill * 3);
+          for (let seg = 0; seg <= stemSegs; seg++) {
+            sp.push(s.x, baseY + (seg / Math.max(1, stemSegs)) * h * 0.55, s.z);
+          }
+        } else {
+          // Daisy: flat ring of petals + upright stem
+          const petalCount = 5 + Math.floor(s.rand * 5);
+          const pr = h * 0.34;
+          for (let p = 0; p < petalCount; p++) {
+            const angle = (p / petalCount) * Math.PI * 2 + s.rand * 0.4;
+            sp.push(s.x + Math.cos(angle) * pr,       baseY + 0.015, s.z + Math.sin(angle) * pr);
+            sp.push(s.x + Math.cos(angle) * pr * 0.6, baseY + 0.013, s.z + Math.sin(angle) * pr * 0.6);
+            sp.push(s.x + Math.cos(angle) * pr * 0.3, baseY + 0.011, s.z + Math.sin(angle) * pr * 0.3);
+          }
+          // Stem
+          const stemSegs = 2 + Math.round(fill * 3);
+          for (let seg = 0; seg <= stemSegs; seg++) {
+            const t = seg / stemSegs;
+            sp.push(s.x + s.leanX * t, baseY + t * h, s.z + s.leanZ * t);
+          }
+        }
+
+        // Flower cap at tip (types 0, 1, 4)
+        if (s.hasTop && fill > 0.10 && s.type !== 2 && s.type !== 3) {
+          const topY = baseY + h;
+          const r = 0.018 * Math.min(1, fill * 2.2);
+          tp.push(s.x, topY + 0.007, s.z);
+          const petals = 4 + Math.floor(s.rand * 4);
+          for (let p = 0; p < petals; p++) {
+            const ang = (p / petals) * Math.PI * 2;
+            tp.push(s.x + Math.cos(ang) * r, topY + 0.004, s.z + Math.sin(ang) * r);
+            tp.push(s.x + Math.cos(ang) * r * 0.5, topY + 0.006, s.z + Math.sin(ang) * r * 0.5);
+          }
