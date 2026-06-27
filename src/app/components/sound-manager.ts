@@ -118,3 +118,43 @@ function jitter(v: number, range: number) {
   return v + (Math.random() * 2 - 1) * range;
 }
 
+// ── Public API ────────────────────────────────────────────────────────────────
+
+export const SFX = {
+  // ── One-shot transition sounds ───────────────────────────────────────────
+  grow()   { sweep(jitter(220, 20), jitter(440, 30), 0.16, 'sine', 0.045); },
+  shrink() { sweep(jitter(330, 20), jitter(165, 20), 0.14, 'sine', 0.038); },
+  bloom()  {
+    // Rising chord: C5 → E5 → G5 (C major)
+    chime(523.25, 0.55, 0.045);
+    setTimeout(() => chime(659.25, 0.50, 0.032), 60);
+    setTimeout(() => chime(784.00, 0.45, 0.024), 120);
+  },
+  sway()   { sweep(jitter(196, 15), jitter(262, 15), 0.22, 'sine', 0.03); },
+  droop()  { sweep(jitter(330, 20), jitter(220, 20), 0.18, 'sine', 0.03); },
+  paramUp()   { chime(523.25, 0.18, 0.028); },
+  paramDown() { chime(392.00, 0.18, 0.028); },
+  modeSwitch() { chime(528, 0.12, 0.022); },
+  selectTree() {
+    chime(440.00, 0.18, 0.032);
+    setTimeout(() => chime(587.33, 0.16, 0.022), 70);
+  },
+  restart() {
+    sweep(440, 220, 0.15, 'sine', 0.04);
+    setTimeout(() => tone(330, 0.18, 'sine', 0.025), 120);
+  },
+
+  // ── Continuous tick sounds ───────────────────────────────────────────────
+
+  // Grow: bright marimba pluck on E4–E5 notes.
+  // At 80 ms intervals the overlap gives a gentle roll feel.
+  growTick()   {
+    if (!canTick()) return;
+    pluck(pick(POOL.grow), 0.14, 0.032, 3.91);
+  },
+
+  // Shrink: softer marimba on A3–A4, slightly darker timbre
+  shrinkTick() {
+    if (!canTick()) return;
+    pluck(pick(POOL.shrink), 0.13, 0.026, 3.91);
+  },
