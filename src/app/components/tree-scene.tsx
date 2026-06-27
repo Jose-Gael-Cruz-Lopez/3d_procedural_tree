@@ -1222,3 +1222,54 @@ export function TreeScene({
         smoothGWild   += (targetGW - smoothGWild)    * alphaW;
         smoothGStem   += (targetGS - smoothGStem)    * alphaS;
 
+        // Rebuild geometry only when integer count changes; throttle min 50ms
+        groundAccum += dt;
+        if (groundAccum >= 0.05) {
+          groundAccum = 0;
+          const fc = Math.round(smoothGFlower);
+          const hc = Math.round(smoothGHerb);
+          const wc = Math.round(smoothGWild);
+          const sc = Math.round(smoothGStem);
+          if (fc !== lastBuiltFlower) {
+            lastBuiltFlower = fc;
+            const { petals: gp, centers: gc } = buildGFlowerPts(fc);
+            gFlowerPetalGeom.setAttribute( 'position', new THREE.BufferAttribute(gp, 3));
+            gFlowerCenterGeom.setAttribute('position', new THREE.BufferAttribute(gc, 3));
+            if (gp.length) gFlowerPetalGeom.computeBoundingSphere();
+            if (gc.length) gFlowerCenterGeom.computeBoundingSphere();
+          }
+          if (hc !== lastBuiltHerb) {
+            lastBuiltHerb = hc;
+            const gh = buildGHerbPts(hc);
+            gHerbExtraGeom.setAttribute('position', new THREE.BufferAttribute(gh, 3));
+            if (gh.length) gHerbExtraGeom.computeBoundingSphere();
+          }
+          if (wc !== lastBuiltWild) {
+            lastBuiltWild = wc;
+            const perPool = Math.round(wc / WILD_COLORS.length);
+            gWildSubGeoms.forEach((g, i) => {
+              const gw = buildWildSubPts(gWildSubPools[i], perPool);
+              g.setAttribute('position', new THREE.BufferAttribute(gw, 3));
+              if (gw.length) g.computeBoundingSphere();
+            });
+          }
+          // Stem rebuild: triggered by count change OR fill change (height rescales)
+          if (sc !== lastBuiltStem || Math.abs(curGrow - lastBuiltFill) > 0.02) {
+            lastBuiltStem = sc;
+            lastBuiltFill = curGrow;
+            const { stems: gs, tops: gt } = buildGStemPts(sc, curGrow);
+            gStemGeom.setAttribute(   'position', new THREE.BufferAttribute(gs, 3));
+            gStemTopGeom.setAttribute('position', new THREE.BufferAttribute(gt, 3));
+            if (gs.length) gStemGeom.computeBoundingSphere();
+            if (gt.length) gStemTopGeom.computeBoundingSphere();
+          }
+        }
+      }
+
+      // ── Bloom opacity: no fade — bloom controls flower COUNT, not transparency.
+      // The previous bloomFade (down to ×0.28) was causing petals/blades to become
+      // nearly invisible at high bloom while the petiole (which used stemOpacity as
+      // base) stayed visible, giving the "only the stem remains" appearance.
+      {
+        leafMat.opacity    = leafOpacityRef.current;
+        centerMat.opacity  = leafOpacityRef.current;
