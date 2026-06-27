@@ -1375,3 +1375,45 @@ export class TreeEngine {
           c => c.parentBranchId === b.id && c.parentSegIdx >= b.segments.length
         );
         for (const orphan of orphans) {
+          this._removeBranchSubtree(orphan.id);
+        }
+
+        // Keep maxSegments anchored so the next grow splits at the right time
+        b.maxSegments = Math.min(
+          b.maxSegments,
+          b.segments.length + this.randomMaxSegs(b.depth),
+        );
+
+        if (b.segments.length <= 1 && b.parentBranchId !== null) {
+          parentsToCheck.add(b.parentBranchId);
+          this._removeBranchSubtree(b.id);
+        }
+      }
+
+      // Reactivate parents whose last active child just disappeared
+      for (const parentId of parentsToCheck) {
+        const parent = this.branches.find(b => b.id === parentId);
+        if (parent && !parent.active) {
+          const stillHasChildren = this.branches.some(b => b.parentBranchId === parentId);
+          if (!stillHasChildren) parent.active = true;
+        }
+      }
+    }
+  }
+
+  /** Remove a branch and every descendant, plus their leaves, in one BFS pass. */
+  private _removeBranchSubtree(rootId: number) {
+    // BFS to collect all ids in the subtree
+    const toRemove = new Set<number>();
+    const queue = [rootId];
+    while (queue.length) {
+      const bid = queue.shift()!;
+      toRemove.add(bid);
+      for (const b of this.branches) {
+        if (b.parentBranchId === bid) queue.push(b.id);
+      }
+    }
+    this.leaves   = this.leaves.filter(l => !toRemove.has(l.branchId));
+    this.branches = this.branches.filter(b => !toRemove.has(b.id));
+  }
+}
