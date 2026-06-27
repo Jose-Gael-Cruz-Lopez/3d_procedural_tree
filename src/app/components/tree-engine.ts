@@ -661,3 +661,54 @@ export class TreeEngine {
       if (branch.depth === 0 && blEff < 0.15) continue;
 
       // At low bloom: only active branches and inactive-terminal branches spawn foliage.
+      // At high bloom (>0.5): open it up to ALL inactive branches — non-terminal
+      // branches have many more segment positions, and without them the spawn map
+      // fills up on the short terminal tips and nothing new appears past ~70%.
+      const children = childMap.get(branch.id);
+      const isTerminalInactive = !branch.active &&
+        (!children || children.length === 0) &&
+        branch.segments.length > 1;
+      const isHighBloomInactive = !branch.active &&
+        this.bloomLevel > 0.5 &&
+        branch.segments.length > 1;
+      // Trunk tip exception: allow bloom at trunk top once blEff is meaningful
+      const isTrunkTipBloom = branch.depth === 0 && blEff >= 0.15;
+      if (!branch.active && !isTerminalInactive && !isHighBloomInactive && !isTrunkTipBloom) continue;
+      const totalSegs = branch.segments.length;
+      if (totalSegs < 4) continue;
+      const tc = branchTipCount(branch);
+      if (tc === 0) continue; // bloom=0: no spawn
+      const tipStart = Math.max(2, totalSegs - tc);
+      for (let si = tipStart; si < totalSegs; si += baseInterval) {
+        // ── Per-segment height guard ──────────────────────────────────────────
+        // branchTipCount checks only the tip Y. For long branches the counted-back
+        // range can include segments well below the visual canopy floor. Skip any
+        // segment whose own Y falls in the lower 55% of the tree.
+        const segY = branch.segments[si].position.y;
+        // Trunk uses a higher threshold so bloom only appears near the very top
+        const heightFloor = branch.depth === 0 ? 0.72 : 0.55;
+        if (segY / maxBranchY < heightFloor) continue;
+
+        for (let ci = 0; ci < bloomCluster; ci++) {
+          const key = `${branch.id}:${si}:${ci}`;
+          if (existingLeafKeys.has(key)) continue;
+          // Fully random twist per (si, ci) — not deterministic per cluster index.
+          // If we used (ci / bloomCluster)*2π, all flowers at every segment would face
+          // the same evenly-spaced angles, producing a perfect line along the branch.
+          const twistSeed = Math.random() * Math.PI * 2;
+          if (this.foliageMode === 'flowers') {
+            this.spawnFlowerAt(branch.id, si, branch.segments[si], ci, twistSeed, bloomSizeMult);
+          } else if (this.foliageMode === 'fruits') {
+            this.spawnFruitAt(branch.id, si, branch.segments[si], bloomSizeMult);
+          } else {
+            this.spawnLeafAt(branch.id, si, branch.segments[si]);
+          }
+        }
+      }
+    }
+  }
+
+  private spawnLeafAt(branchId: number, segIdx: number, seg: Segment) {
+    const up = seg.direction.clone().normalize();
+    const arbitrary = Math.abs(up.y) > 0.9
+      ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
