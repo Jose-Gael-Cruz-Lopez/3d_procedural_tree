@@ -178,3 +178,48 @@ function TreeIcon({ id, color, selected }: { id: string; color: string; selected
       <circle cx="12" cy="12" r="3" fill={color} opacity="0.6"/>
     </svg>
   );
+}
+
+// ── Tree pill button ──────────────────────────────────────────────────────────
+function TreeButton({ t, isSelected, onSelectType }: {
+  t: TreeType; isSelected: boolean; onSelectType: (t: TreeType) => void;
+}) {
+  return (
+    <button
+      onClick={() => onSelectType(t)}
+      style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+        padding: '8px 12px 7px',
+        background: isSelected ? `${t.accentColor}1e` : 'transparent',
+        border: 'none', outline: 'none',
+        borderRadius: 18, cursor: 'pointer',
+        transition: 'background 0.22s ease',
+      }}
+    >
+      <TreeIcon id={t.id} color={t.accentColor} selected={isSelected} />
+      <span style={{
+        fontSize: '9px', letterSpacing: '0.09em', textTransform: 'uppercase',
+        color: isSelected ? TEXT : MUTED,
+        lineHeight: 1, whiteSpace: 'nowrap',
+        transition: 'color 0.2s',
+      }}>
+        {t.name}
+      </span>
+    </button>
+  );
+}
+
+// ── Main panel ─────────────────────────────────────────────────────────────────
+interface TreeTypePanelProps {
+  selectedType: string;
+  onSelectType: (type: TreeType) => void;
+  onRestart: () => void;
+}
+
+export function TreeTypePanel({ selectedType, onSelectType, onRestart }: TreeTypePanelProps) {
+  return (
+    <>
+      {/* ── Bottom centre: tree type buttons ── */}
+      <div
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 select-none"
+      >
