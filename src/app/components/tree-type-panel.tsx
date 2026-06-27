@@ -88,3 +88,48 @@ const MUTED = 'rgba(55, 35, 12, 0.38)';
 const COZY: import('react').CSSProperties = {
   background: 'rgba(255, 248, 232, 0.88)',
   backdropFilter: 'blur(28px) saturate(120%)',
+  WebkitBackdropFilter: 'blur(28px) saturate(120%)',
+  border: '1.5px solid rgba(200, 160, 90, 0.20)',
+  boxShadow: '0 4px 24px rgba(100, 65, 15, 0.10)',
+};
+
+// ── SVG Tree Icons ─────────────────────────────────────────────────────────────
+function TreeIcon({ id, color, selected }: { id: string; color: string; selected: boolean }) {
+  const s = 22;
+  const op = selected ? 1 : 0.72;
+
+  if (id === 'sakura') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={{ opacity: op }}>
+      {[0, 72, 144, 216, 288].map(a => (
+        <ellipse key={a} cx="12" cy="5" rx="2.7" ry="4.3" fill={color}
+          transform={`rotate(${a},12,12)`} />
+      ))}
+      {[36, 108, 180, 252, 324].map(a => (
+        <ellipse key={a} cx="12" cy="5.8" rx="2.0" ry="3.4" fill={color} opacity="0.55"
+          transform={`rotate(${a},12,12)`} />
+      ))}
+      <circle cx="12" cy="12" r="2.2" fill="#f5e060" />
+    </svg>
+  );
+
+  if (id === 'maple') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={{ opacity: op }}>
+      <path d="M12,2.5 L13.8,7.5 L19,6 L16,10.5 L21,12 L16.5,13.5 L18.5,18 L13,15.5 L12,21 L11,15.5 L5.5,18 L7.5,13.5 L3,12 L8,10.5 L5,6 L10.2,7.5 Z"
+        fill={color} />
+      <line x1="12" y1="19" x2="12" y2="23" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+    </svg>
+  );
+
+  if (id === 'wisteria') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={{ opacity: op }}>
+      <path d="M4,5 Q12,2.5 20,5" stroke={color} strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+      {[8, 12, 16].map(x => (
+        <line key={x} x1={x} y1="5" x2={x} y2="8" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+      ))}
+      {[[8,9.5],[7.2,12],[8.8,12],[8,14.5],[8.2,17]].map(([x,y],i) => (
+        <ellipse key={i} cx={x} cy={y} rx="1.7" ry="1.3" fill={color} opacity={0.9 - i * 0.07}/>
+      ))}
+      {[[12,8.5],[11.2,11],[12.8,11],[12,13.5],[12,16]].map(([x,y],i) => (
+        <ellipse key={i} cx={x} cy={y} rx="1.6" ry="1.25" fill={color} opacity={0.88 - i * 0.07}/>
+      ))}
+      {[[16,9.5],[15.2,12],[16.8,12],[16,14.5]].map(([x,y],i) => (
