@@ -1038,8 +1038,13 @@ export function TreeScene({
       const cc = cameraControl.current;
       // Auto-rotate: drift to gentle spin; PAUSE when camera hand-control is active
       // (to avoid the subtle drift during pinch zoom)
-      if (cc.active) {
+      if (cc.active || cinePhase === 1) {
+        // Hand control active, or mid-glide: hold a fixed angle (no spin)
         controls.autoRotate = false;
+      } else if (cinePhase === 2) {
+        // Settled: slow, steady 360° turntable around the tree
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = CINE_SPIN_SPEED;
       } else {
         controls.autoRotate = true;
         controls.autoRotateSpeed += (0.3 - controls.autoRotateSpeed) * Math.min(1, 2 * dt);
