@@ -916,3 +916,54 @@ export class TreeEngine {
       petioleCount,
       centerCount,
       scale: 0,
+      targetScale: 1,
+      age: 0,
+      branchId,
+      segIdx,
+      clusterIdx: 0,
+    });
+  }
+
+  private spawnFlowerAt(branchId: number, segIdx: number, seg: Segment, clusterIdx: number, twistSeed: number, sizeMult: number) {
+    const up = seg.direction.clone().normalize();
+    const arbitrary = Math.abs(up.y) > 0.9
+      ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+    const perp1 = new THREE.Vector3().crossVectors(up, arbitrary).normalize();
+    const perp2 = new THREE.Vector3().crossVectors(up, perp1).normalize();
+
+    // twistSeed is now fully random per flower (passed from spawn loop).
+    // Add a small extra jitter so cluster members at the same si differ slightly.
+    const twist = twistSeed + Math.random() * Math.PI * 0.3;
+    const outDir = perp1.clone().multiplyScalar(Math.cos(twist))
+      .add(perp2.clone().multiplyScalar(Math.sin(twist))).normalize();
+
+    // Random upward tilt: flowers don't all face purely horizontal — they tilt
+    // slightly up or down, breaking the "row of badges along a stick" look.
+    const tiltAngle = (Math.random() - 0.3) * 0.6; // bias slightly upward
+    const tiltAxis = new THREE.Vector3().crossVectors(outDir, up).normalize();
+    const tiltedOut = outDir.clone().applyAxisAngle(tiltAxis, tiltAngle).normalize();
+
+    // Small random radial offset on the anchor position so flowers at adjacent
+    // segments don't all sit exactly on the branch centerline.
+    const radialJitter = (Math.random() - 0.5) * seg.radius * 1.2;
+    const jitterDir = perp1.clone()
+      .multiplyScalar(Math.cos(twist + Math.PI * 0.5))
+      .add(perp2.clone().multiplyScalar(Math.sin(twist + Math.PI * 0.5)));
+    const spawnPos = seg.position.clone()
+      .addScaledVector(jitterDir, radialJitter)
+      .addScaledVector(up, (Math.random() - 0.5) * 0.01);
+
+    const r = seg.radius;
+    const allPoints: THREE.Vector3[] = [];
+
+    // Short petiole — follows tiltedOut direction instead of flat outDir
+    // stemClearance + petioleLen both grow with bloomLevel:
+    //   bloom=0 → clearance=1.5×, petiole=0.04–0.08
+    //   bloom=1 → clearance=4.0×, petiole=0.14–0.18
+    const bl = this.bloomLevel;
+    const stemClearance = Math.max(seg.baseRadius, r) * (1.5 + bl * 2.5);
+    const petioleSteps = 2;
+    const petioleLen = (0.04 + bl * 0.10) + Math.random() * 0.04;
+    for (let i = 0; i <= petioleSteps; i++) {
+      const t = i / petioleSteps;
+      const dist = r + stemClearance + t * petioleLen;
