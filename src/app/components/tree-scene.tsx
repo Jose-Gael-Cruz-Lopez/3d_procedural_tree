@@ -610,3 +610,54 @@ export function TreeScene({
     }
     // spokeSort ensures herbs grow outward uniformly in all directions from the trunk
     Object.assign(gHerbPool, spokeSort(gHerbPool));
+
+    const buildGFlowerPts = (count: number): { petals: Float32Array; centers: Float32Array } => {
+      const pp: number[] = [], cp: number[] = [];
+      const n = Math.min(count, gFlowerPool.length);
+      for (let i = 0; i < n; i++) {
+        const f = gFlowerPool[i];
+        const y = terrainNoise(f.x, f.z);
+        cp.push(f.x, y + 0.022, f.z);
+        for (let p = 0; p < f.petals; p++) {
+          const ox = f.offsets[p * 2], oz = f.offsets[p * 2 + 1];
+          pp.push(f.x + ox * f.r,        y + 0.018, f.z + oz * f.r);
+          pp.push(f.x + ox * f.r * 0.5,  y + 0.019, f.z + oz * f.r * 0.5);
+        }
+      }
+      return { petals: new Float32Array(pp), centers: new Float32Array(cp) };
+    };
+
+    const buildGHerbPts = (count: number): Float32Array => {
+      const pts: number[] = [];
+      const n = Math.min(count, gHerbPool.length);
+      for (let i = 0; i < n; i++) {
+        const h = gHerbPool[i];
+        const y = terrainNoise(h.x, h.z);
+        pts.push(h.x, y + 0.01, h.z);
+        pts.push(h.x + h.dx, y + h.h, h.z + h.dz);
+      }
+      return new Float32Array(pts);
+    };
+
+    // Ground flower geometries & materials
+    const gFlowerPetalGeom  = new THREE.BufferGeometry();
+    const gFlowerCenterGeom = new THREE.BufferGeometry();
+    const gHerbExtraGeom    = new THREE.BufferGeometry();
+    gFlowerPetalGeom.setAttribute( 'position', new THREE.BufferAttribute(new Float32Array(0), 3));
+    gFlowerCenterGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+    gHerbExtraGeom.setAttribute(  'position', new THREE.BufferAttribute(new Float32Array(0), 3));
+
+    const gFlowerPetalMat  = mkMat(leafColorRef.current,        ps * 1.6, 0.82, false);
+    const gFlowerCenterMat = mkMat(flowerCenterColorRef.current, ps * 1.3, 0.90, false);
+    const gHerbExtraMat    = mkMatFlat('#96b080', 2.5, 0.48, true);
+
+    const gFlowerPetalPts  = new THREE.Points(gFlowerPetalGeom,  gFlowerPetalMat);
+    const gFlowerCenterPts = new THREE.Points(gFlowerCenterGeom, gFlowerCenterMat);
+    const gHerbExtraPts    = new THREE.Points(gHerbExtraGeom,    gHerbExtraMat);
+    gFlowerPetalPts.renderOrder  = 5;
+    gFlowerCenterPts.renderOrder = 6;
+    gHerbExtraPts.renderOrder    = 4;
+    scene.add(gFlowerPetalPts);
+    scene.add(gFlowerCenterPts);
+    scene.add(gHerbExtraPts);
+
