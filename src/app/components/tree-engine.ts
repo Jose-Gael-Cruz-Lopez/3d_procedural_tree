@@ -1018,3 +1018,54 @@ export class TreeEngine {
 
       // Petal outline
       const petalPts = 8 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < petalPts; i++) {
+        const t = i / petalPts;
+        const angle = t * Math.PI * 2;
+        const along = (petalLen * 0.5) + Math.cos(angle) * (petalLen * 0.5);
+        const across = Math.sin(angle) * (petalWidth * 0.4);
+        const thick = (Math.random() - 0.5) * 0.003;
+        addPt(
+          pDir.x * along + pSide.x * across + tiltedOut.x * thick,
+          pDir.y * along + pSide.y * across + tiltedOut.y * thick,
+          pDir.z * along + pSide.z * across + tiltedOut.z * thick,
+        );
+      }
+      // Fill interior
+      for (let i = 0; i < 3; i++) {
+        const along = Math.random() * petalLen;
+        const across = (Math.random() - 0.5) * petalWidth * 0.3;
+        addPt(
+          pDir.x * along + pSide.x * across,
+          pDir.y * along + pSide.y * across,
+          pDir.z * along + pSide.z * across,
+        );
+      }
+    }
+
+    this.leaves.push({
+      position: spawnPos,  // uses jittered anchor, not seg.position
+      points: allPoints,
+      petioleCount,
+      centerCount,
+      scale: 0,
+      targetScale: 1,
+      age: 0,
+      branchId,
+      segIdx,
+      clusterIdx,
+    });
+  }
+
+  /**
+   * Retroactively replay all segment positions using the CURRENT wobble setting.
+   * Runs every frame, lerping smoothly so the tree reshapes gradually.
+   */
+  private retroactiveReplay(lerpFactor: number) {
+    const gp = this.growthParams;
+    const branchMap = new Map<number, Branch>();
+    for (const b of this.branches) branchMap.set(b.id, b);
+
+    // Topological order: parents before children
+    const sorted = this.branches.slice().sort((a, b) => a.depth - b.depth);
+    const tDir = new THREE.Vector3();
+    const tPos = new THREE.Vector3();
