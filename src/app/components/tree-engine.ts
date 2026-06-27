@@ -508,3 +508,54 @@ export class TreeEngine {
     sideAxis.applyAxisAngle(branch.direction, twist);
     const lateralAngle = 0.5 + gp.branchAngle * 0.8 + spreadRandom;
     const newDir = branch.direction.clone().applyAxisAngle(sideAxis, lateralAngle);
+    // INVERTED gravity
+    newDir.y = Math.max(newDir.y, 0.35 - gp.gravity * 0.35);
+    newDir.normalize();
+    const childRadius = parentRadius * 0.4;
+    const spawnPos = lastSeg.position.clone().addScaledVector(sideAxis, parentRadius);
+
+    // Parent continues growing (reset its max segs)
+    branch.maxSegments = branch.segments.length + this.randomMaxSegs(branch.depth);
+
+    this.branches.push({
+      segments: [{
+        position: spawnPos, radius: childRadius * 0.3,
+        baseRadius: childRadius, initialRadius: childRadius,
+        age: 0, direction: newDir.clone(), segIndex: 0,
+        branchBaseRadius: childRadius, creationTime: this.time,
+      }],
+      direction: newDir, speed: 0.2 + Math.random() * 0.25,
+      wobble: 0.15 + Math.random() * 0.35, active: true,
+      baseRadius: childRadius,
+      pointsPerRing: Math.max(4, Math.floor(branch.pointsPerRing * 0.7)),
+      noiseOffset: new THREE.Vector3(Math.random() * 1000, Math.random() * 1000, Math.random() * 1000),
+      growAccum: 0, id: this.nextBranchId++,
+      parentBranchId: branch.id, parentSegIdx: lastSegIdx,
+      spawnType: 'lateral', splitSign: 1,
+      twistAngle: twist, spreadRandom,
+      depth: childDepth, maxSegments: this.randomMaxSegs(childDepth),
+      kind: 'main',
+      presence: 1,
+    });
+  }
+
+  private updateLeaves(dt: number) {
+    if (this.leafDensity <= 0) {
+      for (const leaf of this.leaves) leaf.targetScale = 0;
+      this.leaves = this.leaves.filter(leaf => {
+        leaf.age += dt;
+        leaf.scale = THREE.MathUtils.lerp(leaf.scale, leaf.targetScale, dt * 3.0);
+        return leaf.scale > 0.01;
+      });
+      return;
+    }
+
+    const branchMap = new Map<number, Branch>();
+    for (const b of this.branches) branchMap.set(b.id, b);
+
+    // Global bloom params
+    // maxTipSegs=0 at bloomLevel=0 means NO foliage at all (bloom=0 → 0 leaves)
+    // blEff: power curve so low-end bloom is much more gradual.
+    // bl=0.05→blEff=0.011  bl=0.1→0.032  bl=0.3→0.164  bl=0.7→0.586  bl=1→1.0
+    const bl    = this.bloomLevel;
+    const blEff = Math.pow(bl, 1.5);
