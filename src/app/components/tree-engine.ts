@@ -253,3 +253,54 @@ export class TreeEngine {
         const taperedGrowth = continuousGrowth * taperFactor;
         seg.baseRadius = seg.initialRadius + taperedGrowth;
         seg.radius     = filled           + taperedGrowth;
+      }
+    }
+  }
+
+  private syncLeafPositions() {
+    const branchMap = new Map<number, Branch>();
+    for (const b of this.branches) branchMap.set(b.id, b);
+    for (const leaf of this.leaves) {
+      const branch = branchMap.get(leaf.branchId);
+      if (!branch) continue;
+      const seg = branch.segments[leaf.segIdx];
+      if (seg) leaf.position.copy(seg.position);
+    }
+  }
+
+  /** Auto-branching: check if active branches have reached their segment limit */
+  private autoSplit() {
+    // At the cap: just extend existing budgets — no new branches
+    if (this.totalSegmentCount >= this.maxTotalSegments) {
+      for (const branch of this.branches) {
+        if (!branch.active) continue;
+        if (branch.segments.length < branch.maxSegments) continue;
+        if (branch.depth >= this.maxDepth) { branch.active = false; continue; }
+        branch.maxSegments += this.randomMaxSegs(branch.depth);
+      }
+      return;
+    }
+
+    const toSplit: Branch[] = [];
+    const toLateral: Branch[] = [];
+
+    for (const branch of this.branches) {
+      if (!branch.active) continue;
+      if (branch.segments.length < branch.maxSegments) continue;
+      if (branch.depth >= this.maxDepth) {
+        branch.active = false;
+        continue;
+      }
+
+      // effectiveSplit: how often ANYTHING happens (lateral or split)
+      // High floor so branches always branch quickly regardless of splitLevel
+      const effectiveSplit = 0.65 + this.splitLevel * 0.30; // 65–95%
+      if (Math.random() > effectiveSplit) {
+        // Extend but only briefly — 2–3 extra segs max
+        branch.maxSegments += Math.max(2, Math.round(this.randomMaxSegs(branch.depth) * 0.5));
+        continue;
+      }
+
+      // splitProb: low splitLevel → laterals; high → Y-forks
+      const splitProb = Math.pow(this.splitLevel, 1.5);
+      if (Math.random() < splitProb) {
