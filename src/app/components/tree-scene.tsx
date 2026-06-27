@@ -1273,3 +1273,54 @@ export function TreeScene({
       {
         leafMat.opacity    = leafOpacityRef.current;
         centerMat.opacity  = leafOpacityRef.current;
+        petioleMat.opacity = stemOpacityRef.current;
+      }
+
+      // Report param level for ALL modes (including grow)
+      {
+        const level = getParamLevel();
+        const held  = paramButtonHeldRef.current;
+        const prev  = paramLastReported.current;
+        if (Math.abs(level - prev.level) > 0.004 || held !== prev.held) {
+          paramLastReported.current = { held, level };
+          onParamLevelChange.current?.(held, level);
+        }
+      }
+
+      // Always report grow fill (for the grow size bar)
+      onGrowFillChange.current?.(eng.sizeFill);
+
+      // Upload geometries — apply particle sway to foliage layers
+      const sp = eng.getStemPoints();
+      stemGeom.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+      stemGeom.computeBoundingSphere();
+
+      const pp = eng.getLeafPetiolePoints();
+      const ppS = applySway(pp, swayTime, inertiaX * 0.5, inertiaZ * 0.5, 0.7);
+      petioleGeom.setAttribute('position', new THREE.BufferAttribute(ppS, 3));
+      if (ppS.length) petioleGeom.computeBoundingSphere();
+
+      const lp = eng.getLeafBladePoints();
+      const lpS = applySway(lp, swayTime, inertiaX, inertiaZ, 1.0);
+      leafGeom.setAttribute('position', new THREE.BufferAttribute(lpS, 3));
+      if (lpS.length) leafGeom.computeBoundingSphere();
+
+      const cp = eng.getFlowerCenterPoints();
+      const cpS = applySway(cp, swayTime, inertiaX, inertiaZ, 1.0);
+      centerGeom.setAttribute('position', new THREE.BufferAttribute(cpS, 3));
+      if (cpS.length) centerGeom.computeBoundingSphere();
+
+      // Dynamic zoom — centro de órbita a ¾ de la altura del árbol
+      const treeHeight = eng.getMaxHeight();
+      // Auto-zoom sutil: crece solo 0.5 u. por unidad de altura
+      const baseTarget = 5 + Math.max(0, treeHeight - 0.5) * 0.55;
+      // Hard cap so auto-zoom never exceeds the manual-pinch max
+      currentMaxDist = Math.min(baseTarget * userZoomMult, 13);
+      // Órbita punto medio — árbol centrado-bajo en pantalla
+      const targetY = treeHeight > 0.5 ? treeHeight * 0.65 + 0.8 : 1.2;
+      // Auto-zoom unless user is actively pinching
+      if (pinchZoomOverride > 0) {
+        pinchZoomOverride = Math.max(0, pinchZoomOverride - dt);
+      } else {
+        smoothedCamDist += (currentMaxDist - smoothedCamDist) * dt * 0.5;
+        smoothedCamDist = Math.min(smoothedCamDist, 13); // hard cap
