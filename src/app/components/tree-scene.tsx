@@ -253,3 +253,54 @@ export function TreeScene({
     eng.leafShape    = leafShapeRef.current;
     eng.growthMode   = growthModeRef.current;
     engineRef.current = eng;
+  }, []);
+  useEffect(() => { onRestart.current = handleRestart; }, [handleRestart, onRestart]);
+
+  // ── Grow press / release — unified for all modes ──────────────────────────
+  const startGrow = useCallback(() => {
+    paramButtonHeldRef.current = true;
+  }, []);
+
+  const stopGrow = useCallback(() => {
+    paramButtonHeldRef.current = false;
+  }, []);
+  useEffect(() => {
+    onGrowPress.current   = startGrow;
+    onGrowRelease.current = stopGrow;
+  }, [startGrow, stopGrow, onGrowPress, onGrowRelease]);
+
+  const startDec = useCallback(() => { paramButtonDecRef.current = true;  }, []);
+  const stopDec  = useCallback(() => { paramButtonDecRef.current = false; }, []);
+  useEffect(() => {
+    onParamDecPress.current   = startDec;
+    onParamDecRelease.current = stopDec;
+  }, [startDec, stopDec, onParamDecPress, onParamDecRelease]);
+
+  // ── Prop → ref + material sync ───────────────────────────────────────────────
+  useEffect(() => { thicknessRateRef.current = thicknessRate; }, [thicknessRate]);
+
+  useEffect(() => {
+    leafDensityRef.current = leafDensity;
+    if (engineRef.current) engineRef.current.leafDensity = leafDensity;
+  }, [leafDensity]);
+
+  useEffect(() => {
+    growthParamsRef.current = growthParams;
+    if (engineRef.current) engineRef.current.growthParams = { ...growthParams };
+  }, [growthParams]);
+
+  useEffect(() => {
+    growthModeRef.current = growthMode;
+    if (engineRef.current) engineRef.current.growthMode = growthMode;
+  }, [growthMode]);
+
+  useEffect(() => {
+    naturalnessRef.current = naturalness;
+    if (engineRef.current) engineRef.current.naturalness = naturalness;
+  }, [naturalness]);
+
+  useEffect(() => {
+    splitLevelRef.current = splitLevel;
+    if (engineRef.current) engineRef.current.splitLevel = splitLevel;
+  }, [splitLevel]);
+
