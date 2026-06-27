@@ -41,3 +41,46 @@ export default function App() {
 
   // Per-species dynamic values
   const thicknessRate = treeType.defaultThickness;
+  const growSpeed     = treeType.defaultGrowSpeed;
+  const paramRanges   = {
+    wobble:  treeType.wobbleRange,
+    gravity: treeType.gravityRange,
+    bloom:   treeType.bloomRange,
+  };
+
+  const growthParams: GrowthParams = useMemo(() => ({
+    wobble:      treeType.defaultWobble,
+    gravity:     treeType.defaultGravity,
+    branchAngle: 0.5,
+    taper:       DEFAULT_GROWTH_PARAMS.taper,
+    stepSize,
+  }), [treeType, stepSize]);
+
+  // ── Scene refs ────────────────────────────────────────────────────────────
+  const restartRef       = useRef<(() => void) | null>(null);
+  const growPressRef     = useRef<(() => void) | null>(null);
+  const growReleaseRef   = useRef<(() => void) | null>(null);
+  const paramDecPressRef = useRef<(() => void) | null>(null);
+  const paramDecRelRef   = useRef<(() => void) | null>(null);
+  const breathStateRef   = useRef<((held: boolean, charge: number) => void) | null>(null);
+  breathStateRef.current = (_held: boolean, _charge: number) => {};
+
+  const cameraControlRef = useRef<{ zoom: number; yaw: number; active: boolean }>({
+    zoom: 0.5, yaw: 0, active: false,
+  });
+  const handOpennessRef = useRef(-1);
+
+  const paramLevelStateRef = useRef<((held: boolean, level: number) => void) | null>(null);
+  paramLevelStateRef.current = (_held: boolean, _level: number) => {};
+
+  const onGrowFillChangeRef = useRef<((fill: number) => void) | null>(null);
+  onGrowFillChangeRef.current = (_fill: number) => {};
+
+  const handleRestart = useCallback(() => { restartRef.current?.(); SFX.restart(); }, []);
+
+  // ── Tree type switching ───────────────────────────────────────────────────
+  const handleSelectType = useCallback((t: TreeType) => {
+    setTreeType(t);
+    setStemColor(t.stemColor);
+    setLeafColor(t.leafColor);
+    setFlowerCenterColor(t.flowerCenterColor);
