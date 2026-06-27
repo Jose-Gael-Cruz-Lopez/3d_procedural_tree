@@ -158,3 +158,43 @@ export const SFX = {
     if (!canTick()) return;
     pluck(pick(POOL.shrink), 0.13, 0.026, 3.91);
   },
+
+  // Wobble/Sway: airy pluck in mid range, lighter partial
+  // Bloom: overlapping chimes on high pentatonic — shimmer at 160 ms gap
+  paramTick(mode: string) {
+    if (!canTick()) return;
+    switch (mode) {
+      case 'wobble':
+        pluck(pick(POOL.wobble), 0.15, 0.024, 2.0);
+        break;
+      case 'gravity':
+        pluck(pick(POOL.gravity), 0.17, 0.026, 3.0);
+        break;
+      case 'bloom':
+        // Bell tones — long enough that they overlap at 160 ms cooldown
+        chime(pick(POOL.bloom), 0.38, 0.020);
+        break;
+      default:
+        pluck(pick(POOL.grow), 0.14, 0.024, 3.91);
+    }
+  },
+
+  paramDownTick(mode: string) {
+    if (!canTick()) return;
+    switch (mode) {
+      case 'wobble':
+        // Step one note down in the wobble pool for descending feel
+        pluck(PENTA[POOL.wobble[0] + Math.floor(Math.random() * 2)], 0.15, 0.022, 2.0);
+        break;
+      case 'gravity':
+        pluck(PENTA[POOL.gravity[0] + Math.floor(Math.random() * 3)], 0.17, 0.024, 3.0);
+        break;
+      case 'bloom':
+        // Descend: pick from lower half of bloom pool
+        chime(PENTA[POOL.bloom[0] + Math.floor(Math.random() * 3)], 0.38, 0.018);
+        break;
+      default:
+        pluck(pick(POOL.shrink), 0.14, 0.022, 3.91);
+    }
+  },
+};
