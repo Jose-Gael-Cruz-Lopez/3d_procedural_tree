@@ -457,3 +457,54 @@ export function TreeScene({
         depthTest: true,
         sizeAttenuation: true, blending: THREE.NormalBlending,
       });
+
+    // Fixed screen-space size (pixels) — same size at any camera distance
+    const mkMatFlat = (color: string, sizePx: number, opacity: number, depthWrite = false) =>
+      new THREE.PointsMaterial({
+        color: new THREE.Color(color), size: sizePx, map: circleTex,
+        transparent: true, opacity, depthWrite,
+        alphaTest: 0.5,
+        depthTest: true,
+        sizeAttenuation: false, blending: THREE.NormalBlending,
+      });
+
+    const ps = pointSizeRef.current;
+    // Stem/trunk: depthWrite ON — these are opaque and should occlude foliage behind them
+    const stemMat    = mkMat(stemColorRef.current, ps,        stemOpacityRef.current, true);
+    const petioleMat = mkMat(stemColorRef.current, ps * 0.8,  stemOpacityRef.current, true);
+    // Foliage: depthWrite OFF — they're transparent layers that blend on top
+    const leafMat    = mkMat(leafColorRef.current, ps * 1.3,  leafOpacityRef.current, false);
+    const centerMat  = mkMat(flowerCenterColorRef.current, ps * 1.1, leafOpacityRef.current, false);
+    // Terrain: fixed pixel size so dots stay same size regardless of camera distance
+    const terrainMat = mkMatFlat(terrainColorRef.current, 3.0, terrainOpacityRef.current, true);
+
+    stemMaterialRef.current         = stemMat;
+    petioleMaterialRef.current      = petioleMat;
+    leafMaterialRef.current         = leafMat;
+    flowerCenterMaterialRef.current = centerMat;
+    terrainMaterialRef.current      = terrainMat;
+
+    // Point clouds — renderOrder controls draw order for transparent layers
+    const stemGeom    = new THREE.BufferGeometry();
+    const petioleGeom = new THREE.BufferGeometry();
+    const leafGeom    = new THREE.BufferGeometry();
+    const centerGeom  = new THREE.BufferGeometry();
+
+    const stemPoints    = new THREE.Points(stemGeom,    stemMat);
+    const petiolePoints = new THREE.Points(petioleGeom, petioleMat);
+    const leafPoints    = new THREE.Points(leafGeom,    leafMat);
+    const centerPoints  = new THREE.Points(centerGeom,  centerMat);
+
+    // Opaque layers first (depthWrite: true), then transparent on top
+    stemPoints.renderOrder    = 10;  // trunk/branches: solid, writes depth
+    petiolePoints.renderOrder = 11;  // petioles: solid, writes depth
+    leafPoints.renderOrder    = 20;  // foliage: transparent, reads depth
+    centerPoints.renderOrder  = 21;  // flower centers: transparent, on top of petals
+
+    scene.add(stemPoints);
+    scene.add(petiolePoints);
+    scene.add(leafPoints);
+    scene.add(centerPoints);
+
+    // Terrain
+    const terrainGeom = new THREE.BufferGeometry();
