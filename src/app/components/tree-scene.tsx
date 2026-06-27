@@ -916,3 +916,54 @@ export function TreeScene({
       e.preventDefault();
 
       // ── Scroll horizontal → rotar cámara azimutalmente ──────────────────
+      // Umbral estricto: deltaX debe dominar claramente sobre deltaY (×2.5) y
+      // superar un mínimo absoluto. En trackpad, un scroll vertical siempre
+      // genera algo de deltaX por imprecisión; con un ratio bajo (×0.6) ese
+      // ruido lateral ya disparaba la rotación aunque el usuario solo scrolleara.
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 2.5 && Math.abs(e.deltaX) > 10) {
+        const rotAngle = e.deltaX * 0.004;
+        const offset = camera.position.clone().sub(controls.target);
+        const quat   = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(0, 1, 0), -rotAngle,
+        );
+        offset.applyQuaternion(quat);
+        camera.position.copy(controls.target).add(offset);
+        return;
+      }
+
+      // ── Ctrl/⌘+Scroll (mouse wheel zoom) o Pinch (trackpad) → zoom ──────
+      if (e.ctrlKey || e.metaKey) {
+        const factor = e.deltaY > 0 ? 1.06 : 0.945;
+        const newDist = Math.max(2, Math.min(13, smoothedCamDist * factor));
+        smoothedCamDist = newDist;
+        // Persist zoom: adjust userZoomMult so auto-zoom settles at this distance
+        const treeH = engineRef.current?.getMaxHeight() ?? 0;
+        const baseDist = 5 + Math.max(0, treeH - 0.5) * 0.55;
+        userZoomMult = Math.max(0.35, Math.min(1.4, newDist / Math.max(1, baseDist)));
+        pinchZoomOverride = 2.0;
+        return;
+      }
+
+      // ── Param mode: inertial ──────────────────────────────────────────────
+      // scroll up (neg deltaY) = increase; scroll down = decrease
+      if (Math.abs(e.deltaY) > 2) {
+        const SCROLL_SENS = 0.018;
+        const SCROLL_MAX  = 2.4;
+        const raw    = scrollVelocity - e.deltaY * SCROLL_SENS;
+        const target = Math.max(-SCROLL_MAX, Math.min(SCROLL_MAX, raw));
+        // Blend suave: la velocidad se acerca gradualmente al target en lugar
+        // de saltar bruscamente → rampa de arranque más natural
+        scrollVelocity += (target - scrollVelocity) * 0.60;
+      }
+    };
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    // ── Native touch pinch-to-zoom (mobile two-finger) ────────────────────────
+    let touchPinchStartDist    = 0;
+    let touchPinchStartCamDist = smoothedCamDist;
+    let touchPinchActive       = false;
+
+    const getTouchDist = (touches: TouchList) => {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
