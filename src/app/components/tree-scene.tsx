@@ -202,3 +202,54 @@ export function TreeScene({
   const growthParamsRef      = useRef(growthParams);
   const growthModeRef        = useRef(growthMode);
   const naturalnessRef       = useRef(naturalness);
+  const splitLevelRef        = useRef(splitLevel);
+  const foliageModeRef       = useRef(foliageMode);
+  const leafShapeRef         = useRef(leafShape);
+  const growSpeedRef         = useRef(growSpeed);
+  const paramRangesRef       = useRef(paramRanges);
+  const pointSizeRef         = useRef(pointSize);
+  const stemColorRef         = useRef(stemColor);
+  const leafColorRef         = useRef(leafColor);
+  const stemOpacityRef       = useRef(stemOpacity);
+  const leafOpacityRef       = useRef(leafOpacity);
+  const terrainColorRef      = useRef(terrainColor);
+  const terrainOpacityRef    = useRef(terrainOpacity);
+  const terrainDensityRef    = useRef(terrainDensity);
+  const flowerCenterColorRef = useRef(flowerCenterColor);
+
+  // ── paramT: control interpolation position [0–1] per param, species-agnostic ──
+  // This is the SOURCE OF TRUTH for all non-grow controls. It never changes when
+  // the tree type changes; only user input (scroll / button) mutates it.
+  // The actual engine param = lo + paramT * (hi - lo) and is re-derived whenever
+  // paramT or paramRanges change, so the bar never jumps on species switch.
+  const paramTRef = useRef({ wobble: 0.5, gravity: 0.5, bloom: 0 });
+
+  const applyParamTToEngine = useCallback((ranges: typeof paramRanges) => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    const t = paramTRef.current;
+    eng.growthParams.wobble  = ranges.wobble[0]  + t.wobble  * (ranges.wobble[1]  - ranges.wobble[0]);
+    eng.growthParams.gravity = ranges.gravity[0] + t.gravity * (ranges.gravity[1] - ranges.gravity[0]);
+    eng.bloomLevel = Math.max(0, Math.min(ranges.bloom[1], t.bloom * ranges.bloom[1]));
+  }, []);
+
+  const autoGrowRef = useRef(autoGrow);
+  useEffect(() => { autoGrowRef.current = autoGrow; }, [autoGrow]);
+
+  // Breath / grow state — simplified: now all modes use paramButtonHeldRef
+  // (burst/charge mechanic removed; grow is symmetric with other params)
+  const paramButtonHeldRef = useRef(false);
+  const paramButtonDecRef  = useRef(false); // mobile − button: decrease direction
+  const paramLastReported  = useRef({ held: false, level: 0.5 });
+
+  // ── Restart ──────────────────────────────────────────────────────────────────
+  const handleRestart = useCallback(() => {
+    const eng = new TreeEngine();
+    eng.leafDensity  = leafDensityRef.current;
+    eng.growthParams = { ...growthParamsRef.current };
+    eng.naturalness  = naturalnessRef.current;
+    eng.splitLevel   = splitLevelRef.current;
+    eng.foliageMode  = foliageModeRef.current;
+    eng.leafShape    = leafShapeRef.current;
+    eng.growthMode   = growthModeRef.current;
+    engineRef.current = eng;
