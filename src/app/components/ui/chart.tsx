@@ -133,3 +133,48 @@ function ChartTooltipContent({
       return null;
     }
 
+    const [item] = payload;
+    const key = `${labelKey || item?.dataKey || item?.name || "value"}`;
+    const itemConfig = getPayloadConfigFromPayload(config, item, key);
+    const value =
+      !labelKey && typeof label === "string"
+        ? config[label as keyof typeof config]?.label || label
+        : itemConfig?.label;
+
+    if (labelFormatter) {
+      return (
+        <div className={cn("font-medium", labelClassName)}>
+          {labelFormatter(value, payload)}
+        </div>
+      );
+    }
+
+    if (!value) {
+      return null;
+    }
+
+    return <div className={cn("font-medium", labelClassName)}>{value}</div>;
+  }, [
+    label,
+    labelFormatter,
+    payload,
+    hideLabel,
+    labelClassName,
+    config,
+    labelKey,
+  ]);
+
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const nestLabel = payload.length === 1 && indicator !== "dot";
+
+  return (
+    <div
+      className={cn(
+        "border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl",
+        className,
+      )}
+    >
+      {!nestLabel ? tooltipLabel : null}
