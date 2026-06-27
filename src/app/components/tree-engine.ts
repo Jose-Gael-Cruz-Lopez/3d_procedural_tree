@@ -712,3 +712,54 @@ export class TreeEngine {
     const up = seg.direction.clone().normalize();
     const arbitrary = Math.abs(up.y) > 0.9
       ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+    const perp1 = new THREE.Vector3().crossVectors(up, arbitrary).normalize();
+    const perp2 = new THREE.Vector3().crossVectors(up, perp1).normalize();
+
+    const twist = Math.random() * Math.PI * 2;
+    const outDir = perp1.clone().multiplyScalar(Math.cos(twist))
+      .add(perp2.clone().multiplyScalar(Math.sin(twist))).normalize();
+    const sideDir = new THREE.Vector3().crossVectors(up, outDir).normalize();
+
+    const r = seg.radius;
+    const allPoints: THREE.Vector3[] = [];
+
+    const petioleSteps = 3 + Math.floor(Math.random() * 3);
+    const petioleLen = 0.02 + Math.random() * 0.03;
+
+    for (let i = 0; i <= petioleSteps; i++) {
+      const t = i / petioleSteps;
+      const dist = r + t * petioleLen;
+      const droopY = -t * t * 0.003;
+      const liftY  = t * 0.002;
+      allPoints.push(new THREE.Vector3(
+        outDir.x * dist + up.x * (droopY + liftY),
+        outDir.y * dist + up.y * (droopY + liftY),
+        outDir.z * dist + up.z * (droopY + liftY),
+      ));
+    }
+    const petioleCount = allPoints.length;
+
+    const bladeOriginDist = r + petioleLen;
+    const bOx = outDir.x * bladeOriginDist;
+    const bOy = outDir.y * bladeOriginDist;
+    const bOz = outDir.z * bladeOriginDist;
+
+    const shape = this.leafShape;
+
+    if (shape === 'palmate') {
+      // ── Palmate / maple: 5 lobes fanning from the base ──────────────────
+      const lobeBaseLen = 0.048 + Math.random() * 0.032;
+      const lobeSpread  = 0.58; // ~33° between adjacent lobes
+      for (let l = 0; l < 5; l++) {
+        const lobeAngle   = (l - 2) * lobeSpread;
+        const dist2Center = Math.abs(l - 2);
+        const lobeLen  = lobeBaseLen * (1.0 - dist2Center * 0.22);
+        const lobeWidth = lobeLen * 0.38;
+        // Rotate outDir by lobeAngle around up-axis
+        const lobeDir = new THREE.Vector3(
+          outDir.x * Math.cos(lobeAngle) + sideDir.x * Math.sin(lobeAngle),
+          outDir.y * Math.cos(lobeAngle) + sideDir.y * Math.sin(lobeAngle),
+          outDir.z * Math.cos(lobeAngle) + sideDir.z * Math.sin(lobeAngle),
+        ).normalize();
+        const lobeSide = new THREE.Vector3().crossVectors(up, lobeDir).normalize();
+        const lobePts = 6 + Math.floor(Math.random() * 3);
