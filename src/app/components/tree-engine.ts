@@ -49,3 +49,54 @@ export interface Branch {
   growAccum: number;
   id: number;
   parentBranchId: number | null;
+  parentSegIdx: number;
+  spawnType: 'trunk' | 'split' | 'lateral';
+  splitSign: number;
+  twistAngle: number;
+  spreadRandom: number;
+  depth: number;
+  maxSegments: number;
+  kind: 'main';
+  /** 0–1 smooth visibility driven by splitLevel retroactively */
+  presence: number;
+}
+
+export type FoliageMode = 'leaves' | 'flowers' | 'fruits';
+
+export type LeafShape = 'oval' | 'needle' | 'palmate' | 'round' | 'elongated';
+
+export type GrowthMode = 'grow' | 'wobble' | 'gravity' | 'angle' | 'bloom';
+
+export interface GrowthParams {
+  wobble: number;
+  gravity: number;
+  branchAngle: number;
+  taper: number;
+  stepSize: number;
+}
+
+export const DEFAULT_GROWTH_PARAMS: GrowthParams = {
+  wobble: 0.5,
+  gravity: 0.5,
+  branchAngle: 0.5,
+  taper: 0.5,
+  stepSize: 0.09,   // was 0.12 — shorter steps → denser, better-defined branches
+};
+
+// Box-Muller normal distribution
+function normalRandom(mean: number, stdDev: number): number {
+  const u1 = Math.random();
+  const u2 = Math.random();
+  const z = Math.sqrt(-2 * Math.log(Math.max(u1, 1e-10))) * Math.cos(2 * Math.PI * u2);
+  return mean + z * stdDev;
+}
+
+// Reusable vectors
+const _v1 = new THREE.Vector3();
+const _v2 = new THREE.Vector3();
+const _v3 = new THREE.Vector3();
+
+export class TreeEngine {
+  branches: Branch[] = [];
+  leaves: Leaf[] = [];
+  time: number = 0;
