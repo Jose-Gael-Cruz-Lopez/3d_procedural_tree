@@ -151,3 +151,54 @@ export class TreeEngine {
 
     const branch: Branch = {
       segments: [{
+        position: new THREE.Vector3(spawnX, terrainY, spawnZ),
+        radius: 0.09, baseRadius: 0.09, initialRadius: 0.09,
+        age: 0, direction: normal.clone(), segIndex: 0,
+        branchBaseRadius: 0.09, creationTime: 0,
+      }],
+      direction: normal.clone(),
+      speed: 0.35 + Math.random() * 0.2,
+      wobble: 0.15 + Math.random() * 0.15,
+      active: true, baseRadius: 0.09, pointsPerRing: 10,
+      noiseOffset: new THREE.Vector3(Math.random() * 1000, Math.random() * 1000, Math.random() * 1000),
+      growAccum: 0, id: this.nextBranchId++,
+      parentBranchId: null, parentSegIdx: 0, spawnType: 'trunk',
+      splitSign: 0, twistAngle: 0, spreadRandom: 0,
+      depth: 0, maxSegments: this.randomMaxSegs(0),
+      kind: 'main',
+      presence: 1,
+    };
+    this.branches.push(branch);
+  }
+
+  private noise3(x: number, y: number, z: number): number {
+    const a = Math.sin(x * 1.27 + y * 3.43) * 0.5 + 0.5;
+    const b = Math.sin(y * 2.17 + z * 1.79) * 0.5 + 0.5;
+    const c = Math.sin(z * 3.11 + x * 0.97) * 0.5 + 0.5;
+    return (a + b + c) / 3.0 * 2.0 - 1.0;
+  }
+
+  private replaySegment(
+    prevPos: THREE.Vector3, prevDir: THREE.Vector3,
+    seg: Segment, branch: Branch, gp: GrowthParams,
+  ) {
+    const noiseScale = 0.4;
+    const timeScale = 0.3;
+    const si = seg.segIndex;
+    const nx = this.noise3(branch.noiseOffset.x + si * 0.15, seg.creationTime * timeScale, branch.noiseOffset.z);
+    const nz = this.noise3(branch.noiseOffset.y, seg.creationTime * timeScale, branch.noiseOffset.z + si * 0.15);
+    const wobbleScale = 0.1 + gp.wobble * 1.4;
+    _v1.set(nx * branch.wobble * noiseScale * wobbleScale, 0, nz * branch.wobble * noiseScale * wobbleScale);
+    seg.direction.copy(prevDir).add(_v1);
+    // INVERTED: high gravity = drooping, low gravity = upright
+    const minY = 0.80 - gp.gravity * 0.75;
+    seg.direction.y = Math.max(seg.direction.y, minY);
+    seg.direction.normalize();
+    seg.position.copy(prevPos).addScaledVector(seg.direction, gp.stepSize);
+  }
+
+  private computeChildRoot(branch: Branch, branchMap: Map<number, Branch>, gp: GrowthParams) {
+    const parent = branchMap.get(branch.parentBranchId!);
+    if (!parent) return;                          // parent not in map yet — skip safely
+    const parentSeg = parent.segments[branch.parentSegIdx];
+    if (!parentSeg) return;
