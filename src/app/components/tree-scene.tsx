@@ -1324,3 +1324,54 @@ export function TreeScene({
       } else {
         smoothedCamDist += (currentMaxDist - smoothedCamDist) * dt * 0.5;
         smoothedCamDist = Math.min(smoothedCamDist, 13); // hard cap
+      }
+      const camDir = camera.position.clone().sub(controls.target).normalize();
+      camera.position.copy(controls.target).addScaledVector(camDir, smoothedCamDist);
+      // Seguimiento suave del centro de órbita (lerp lento para no ser brusco)
+      controls.target.y += (targetY - controls.target.y) * Math.min(1, dt * 0.8);
+
+      controls.update();
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    const onResize = () => {
+      const rw = container.clientWidth, rh = container.clientHeight;
+      camera.aspect = rw / rh;
+      camera.updateProjectionMatrix();
+      renderer.setSize(rw, rh);
+    };
+    const ro = new ResizeObserver(onResize);
+    ro.observe(container);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      ro.disconnect();
+      container.removeEventListener('wheel', handleWheel);
+      container.removeEventListener('touchstart',  handleTouchStart);
+      container.removeEventListener('touchmove',   handleTouchMove);
+      container.removeEventListener('touchend',    handleTouchEnd);
+      container.removeEventListener('touchcancel', handleTouchEnd);
+      circleTex.dispose();
+      [stemMat, petioleMat, leafMat, centerMat, terrainMat, herbMat, tFlowerMat,
+        gFlowerPetalMat, gFlowerCenterMat, gHerbExtraMat,
+        gStemMat, gStemTopMat, ...gWildSubMats].forEach(m => m.dispose());
+      if (tFlowerMat2) tFlowerMat2.dispose();
+      [stemGeom, petioleGeom, leafGeom, centerGeom, terrainGeom, herbGeom, tFlowerGeom,
+        gFlowerPetalGeom, gFlowerCenterGeom, gHerbExtraGeom,
+        gStemGeom, gStemTopGeom, ...gWildSubGeoms].forEach(g => g.dispose());
+      if (tFlowerGeom2) tFlowerGeom2.dispose();
+      renderer.dispose();
+      if (container.contains(renderer.domElement)) container.removeChild(renderer.domElement);
+      engineRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return <div ref={containerRef} className="w-full h-full" />;
+}
+
+// ── Particle sway helper ────────────────────────────────────────────────────
+// Applies height-scaled oscillation + camera-inertia displacement to a point array.
+// Returns a new Float32Array so the engine's internal data is never mutated.
+function applySway(
