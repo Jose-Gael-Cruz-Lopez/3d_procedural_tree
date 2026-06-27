@@ -100,3 +100,54 @@ export class TreeEngine {
   branches: Branch[] = [];
   leaves: Leaf[] = [];
   time: number = 0;
+  thicknessRate: number = 0.012;
+  leafDensity: number = 0.5;
+  foliageMode: FoliageMode = 'leaves';
+  leafShape: LeafShape = 'oval';   // shape variant for leaf mode
+  growthParams: GrowthParams = { ...DEFAULT_GROWTH_PARAMS };
+  naturalness: number = 0.5; // 0 = uniform branching, 1 = high variance
+  splitLevel: number = 0.65;  // fixed — no longer user-controlled; good natural branching
+  maxDepth: number = 6;
+  growthMode: GrowthMode = 'grow';
+  bloomLevel: number = 0;  // 0–1: controls how many flowers appear at branch extremities
+  /** Hard cap on total segments across all branches */
+  maxTotalSegments: number = 1600;  // was 1200 — compensates for smaller stepSize
+  private nextBranchId: number = 0;
+  private leafSpawnAccum: number = 0;
+  private trunkOrigin = new THREE.Vector3();
+  private trunkNormal = new THREE.Vector3();
+  private autoSplitAccum: number = 0;
+
+  /** Current total segment count across all branches */
+  get totalSegmentCount(): number {
+    let n = 0;
+    for (const b of this.branches) n += b.segments.length;
+    return n;
+  }
+
+  /** 0–1 fill ratio toward the cap */
+  get sizeFill(): number {
+    return Math.min(1, this.totalSegmentCount / this.maxTotalSegments);
+  }
+
+  constructor() {
+    this.initTrunk();
+  }
+
+  private randomMaxSegs(depth: number): number {
+    // Much shorter segments before decision point → earlier splits
+    const baseMean = depth === 0 ? 5 : Math.max(2, 4 - depth);
+    const stdDev = 0.4 + this.naturalness * 1.2;
+    return Math.max(2, Math.round(normalRandom(baseMean, stdDev)));
+  }
+
+  private initTrunk() {
+    const spawnX = 0;
+    const spawnZ = 0;
+    const terrainY = terrainNoise(spawnX, spawnZ);
+    const normal = terrainNormalAt(spawnX, spawnZ);
+    this.trunkOrigin.set(spawnX, terrainY, spawnZ);
+    this.trunkNormal.copy(normal);
+
+    const branch: Branch = {
+      segments: [{
