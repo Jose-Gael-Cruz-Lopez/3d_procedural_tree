@@ -1120,3 +1120,54 @@ export class TreeEngine {
 
         // Smooth lerp toward target
         seg.direction.lerp(tDir, lerpFactor).normalize();
+        seg.position.lerp(tPos, lerpFactor);
+
+        prevPos = seg.position;
+        prevDir = seg.direction;
+      }
+    }
+  }
+
+  /**
+   * Drive branch.presence toward a target determined by splitLevel and branch depth.
+   * DISABLED — split no longer controls visibility, only autoSplit density.
+   */
+  private updatePresence(_lerpFactor: number) {
+    // No-op: all branches always fully present
+    for (const branch of this.branches) branch.presence = 1;
+  }
+
+  getStemPoints(): Float32Array {
+    const allPoints: number[] = [];
+    const _up    = new THREE.Vector3();
+    const _perp1 = new THREE.Vector3();
+    const _perp2 = new THREE.Vector3();
+    const _ref   = new THREE.Vector3();
+    const _midPos = new THREE.Vector3();
+    const _midDir = new THREE.Vector3();
+
+    // Inner helper: push one full ring + optional center point
+    const pushRing = (
+      px: number, py: number, pz: number,
+      r: number,
+      dx: number, dy: number, dz: number,
+    ) => {
+      _up.set(dx, dy, dz).normalize();
+      if (Math.abs(_up.x) < 0.9) { _ref.set(1, 0, 0); } else { _ref.set(0, 0, 1); }
+      _perp1.crossVectors(_up, _ref).normalize();
+      _perp2.crossVectors(_up, _perp1).normalize();
+      const ringCount = Math.max(8, Math.round(r * 200));
+      for (let i = 0; i < ringCount; i++) {
+        const angle = (i / ringCount) * Math.PI * 2;
+        const cosA = Math.cos(angle) * r;
+        const sinA = Math.sin(angle) * r;
+        allPoints.push(
+          px + cosA * _perp1.x + sinA * _perp2.x,
+          py + cosA * _perp1.y + sinA * _perp2.y,
+          pz + cosA * _perp1.z + sinA * _perp2.z,
+        );
+      }
+      if (r > 0.04) allPoints.push(px, py, pz);
+    };
+
+    for (const branch of this.branches) {
