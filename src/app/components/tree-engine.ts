@@ -763,3 +763,54 @@ export class TreeEngine {
         ).normalize();
         const lobeSide = new THREE.Vector3().crossVectors(up, lobeDir).normalize();
         const lobePts = 6 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < lobePts; i++) {
+          const a = (i / lobePts) * Math.PI * 2;
+          const along = (lobeLen * 0.5) + Math.cos(a) * (lobeLen * 0.5);
+          const across = Math.sin(a) * (lobeWidth * 0.5);
+          allPoints.push(new THREE.Vector3(
+            bOx + lobeDir.x * along + lobeSide.x * across,
+            bOy + lobeDir.y * along + lobeSide.y * across,
+            bOz + lobeDir.z * along + lobeSide.z * across,
+          ));
+        }
+        for (let i = 0; i < 3; i++) {
+          const along = Math.random() * lobeLen;
+          const across = (Math.random() - 0.5) * lobeWidth * 0.6;
+          allPoints.push(new THREE.Vector3(
+            bOx + lobeDir.x * along + lobeSide.x * across,
+            bOy + lobeDir.y * along + lobeSide.y * across,
+            bOz + lobeDir.z * along + lobeSide.z * across,
+          ));
+        }
+      }
+      // Central midrib
+      for (let i = 0; i < 3; i++) {
+        const t2 = i / 2;
+        allPoints.push(new THREE.Vector3(
+          bOx + outDir.x * t2 * lobeBaseLen * 0.45,
+          bOy + outDir.y * t2 * lobeBaseLen * 0.45,
+          bOz + outDir.z * t2 * lobeBaseLen * 0.45,
+        ));
+      }
+    } else {
+      // ── Ellipse-based shapes: oval / needle / round / elongated ──────────
+      let leafLen: number, leafWidth: number;
+      if (shape === 'needle') {
+        leafLen   = 0.10 + Math.random() * 0.07;
+        leafWidth = leafLen * 0.09;
+      } else if (shape === 'round') {
+        leafLen   = 0.055 + Math.random() * 0.03;
+        leafWidth = leafLen * (0.88 + Math.random() * 0.10);
+      } else if (shape === 'elongated') {
+        leafLen   = 0.075 + Math.random() * 0.055;
+        leafWidth = leafLen * 0.18;
+      } else {
+        // 'oval' — default
+        leafLen   = 0.04 + Math.random() * 0.04;
+        leafWidth = leafLen * (0.45 + Math.random() * 0.3);
+      }
+
+      const addBlade = (along: number, across: number, thick: number) => {
+        allPoints.push(new THREE.Vector3(
+          bOx + outDir.x * along + sideDir.x * across + up.x * thick,
+          bOy + outDir.y * along + sideDir.y * across + up.y * thick,
