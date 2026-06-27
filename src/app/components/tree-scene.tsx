@@ -1375,3 +1375,27 @@ export function TreeScene({
 // Applies height-scaled oscillation + camera-inertia displacement to a point array.
 // Returns a new Float32Array so the engine's internal data is never mutated.
 function applySway(
+  src: Float32Array,
+  t: number,
+  inertiaX: number,
+  inertiaZ: number,
+  scale = 1.0,
+): Float32Array {
+  if (src.length === 0) return src;
+  const out = new Float32Array(src.length);
+  for (let i = 0; i < src.length; i += 3) {
+    const x = src[i], y = src[i + 1], z = src[i + 2];
+    // Height factor — nothing below y=0.3, grows linearly above
+    const hf = Math.max(0, y - 0.3) * 0.014 * scale;
+    // Swirl: two independent sine waves for x and z
+    const sx = Math.sin(t * 0.72 + y * 2.4 + x * 0.85) * hf;
+    const sy = Math.cos(t * 1.15 + x * 1.2  + z * 0.8)  * hf * 0.22; // subtle vertical bob
+    const sz = Math.cos(t * 0.88 + y * 1.9  + z * 0.65) * hf;
+    // Inertia: higher points trail more when camera moves
+    const iy = Math.max(0, y) * 0.07;
+    out[i]     = x + sx + inertiaX * iy;
+    out[i + 1] = y + sy;
+    out[i + 2] = z + sz + inertiaZ * iy;
+  }
+  return out;
+}
