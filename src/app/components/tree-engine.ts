@@ -457,3 +457,54 @@ export class TreeEngine {
 
     for (let i = 0; i < 2; i++) {
       const sign = i === 0 ? 1 : -1;
+      const arbitrary = Math.abs(branch.direction.y) > 0.9
+        ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+      const rotAxis = new THREE.Vector3().crossVectors(branch.direction, arbitrary).normalize();
+      rotAxis.applyAxisAngle(branch.direction, twist);
+      const baseSpread = 0.15 + gp.branchAngle * 0.7;
+      const spreadAngle = baseSpread + spreadRandom;
+      const newDir = branch.direction.clone().applyAxisAngle(rotAxis, sign * spreadAngle);
+      // INVERTED gravity
+      newDir.y = Math.max(newDir.y, 0.50 - gp.gravity * 0.45);
+      newDir.normalize();
+      const childRadius = parentRadius * 0.55;
+      const spawnOffset = rotAxis.clone().multiplyScalar(sign * (parentRadius - childRadius) * 0.8);
+      const spawnPos = lastSeg.position.clone().add(spawnOffset);
+      this.branches.push({
+        segments: [{
+          position: spawnPos, radius: childRadius * 0.3,
+          baseRadius: childRadius, initialRadius: childRadius,
+          age: 0, direction: newDir.clone(), segIndex: 0,
+          branchBaseRadius: childRadius, creationTime: this.time,
+        }],
+        direction: newDir, speed: 0.25 + Math.random() * 0.3,
+        wobble: 0.1 + Math.random() * 0.4, active: true,
+        baseRadius: childRadius,
+        pointsPerRing: Math.max(4, Math.floor(branch.pointsPerRing * 0.85)),
+        noiseOffset: new THREE.Vector3(Math.random() * 1000, Math.random() * 1000, Math.random() * 1000),
+        growAccum: 0, id: this.nextBranchId++,
+        parentBranchId: branch.id, parentSegIdx: lastSegIdx,
+        spawnType: 'split', splitSign: sign,
+        twistAngle: twist, spreadRandom,
+        depth: childDepth, maxSegments: this.randomMaxSegs(childDepth),
+        kind: 'main',
+        presence: 1,
+      });
+    }
+  }
+
+  private lateralFromBranch(branch: Branch) {
+    const gp = this.growthParams;
+    const lastSegIdx = branch.segments.length - 1;
+    const lastSeg = branch.segments[lastSegIdx];
+    const parentRadius = lastSeg.baseRadius;
+    const twist = Math.random() * Math.PI * 2;
+    const spreadRandom = Math.random() * 0.3;
+    const childDepth = branch.depth + 1;
+
+    const arbitrary = Math.abs(branch.direction.y) > 0.9
+      ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+    const sideAxis = new THREE.Vector3().crossVectors(branch.direction, arbitrary).normalize();
+    sideAxis.applyAxisAngle(branch.direction, twist);
+    const lateralAngle = 0.5 + gp.branchAngle * 0.8 + spreadRandom;
+    const newDir = branch.direction.clone().applyAxisAngle(sideAxis, lateralAngle);
