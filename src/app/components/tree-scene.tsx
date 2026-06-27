@@ -712,3 +712,54 @@ export function TreeScene({
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
       return g;
     });
+    const gWildSubMats = WILD_COLORS.map(c => mkMat(c, ps * 1.2, 0.82, false));
+    gWildSubGeoms.forEach((g, i) => {
+      const pts = new THREE.Points(g, gWildSubMats[i]);
+      pts.renderOrder = 7;
+      scene.add(pts);
+    });
+
+    // Keep backward-compat refs pointing to the first sub-pool
+    const gWildGeom = gWildSubGeoms[0];
+    const gWildMat  = gWildSubMats[0];
+    gWildGeomRef.current = gWildGeom;
+    gWildMatRef.current  = gWildMat;
+
+    // ── Vertical stem plants — concentrated near trunk base, grow-driven ──���──
+    // Each plant renders differently based on type for rich visual variety.
+    // Height AND count scale with sizeFill → grow/degrow affects both.
+    interface GStemPlant {
+      x: number; z: number;
+      type: 0 | 1 | 2 | 3 | 4;  // 0=fern, 1=grass fan, 2=bush dome, 3=rosette, 4=daisy
+      maxH: number;
+      leanX: number; leanZ: number;
+      hasTop: boolean;
+      rand: number;  // per-plant random seed 0-1
+    }
+    const GS_POOL = 700;
+    const gStemPool: GStemPlant[] = [];
+    for (let i = 0; i < GS_POOL; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const u = Math.random();
+      // 65% near base (r<2.5), 35% wider scatter
+      const radius = u < 0.65
+        ? 0.10 + Math.pow(Math.random(), 1.8) * 2.4
+        : 1.5 + Math.pow(Math.random(), 1.5) * 5.5;
+      const type = Math.floor(Math.random() * 5) as 0 | 1 | 2 | 3 | 4;
+      gStemPool.push({
+        x: Math.cos(a) * radius, z: Math.sin(a) * radius,
+        type,
+        maxH: 0.06 + Math.random() * 0.22,
+        leanX: (Math.random() - 0.5) * 0.025,
+        leanZ: (Math.random() - 0.5) * 0.025,
+        hasTop: Math.random() > 0.35,
+        rand: Math.random(),
+      });
+    }
+    // spokeSort ensures stem plants encircle trunk from all angles as count grows
+    Object.assign(gStemPool, spokeSort(gStemPool));
+
+    const buildGStemPts = (count: number, fill: number): { stems: Float32Array; tops: Float32Array } => {
+      if (fill <= 0 || count <= 0) return { stems: new Float32Array(0), tops: new Float32Array(0) };
+      const sp: number[] = [], tp: number[] = [];
+      const n = Math.min(count, gStemPool.length);
