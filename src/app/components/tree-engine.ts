@@ -1222,3 +1222,54 @@ export class TreeEngine {
       const fx = leaf.position.x, fy = leaf.position.y, fz = leaf.position.z;
       for (let i = 0; i < leaf.petioleCount; i++) {
         const p = leaf.points[i];
+        allPoints.push(fx + p.x * s, fy + p.y * s, fz + p.z * s);
+      }
+    }
+    return new Float32Array(allPoints);
+  }
+
+  getLeafBladePoints(): Float32Array {
+    const allPoints: number[] = [];
+    const presMap = new Map<number, number>();
+    for (const b of this.branches) presMap.set(b.id, b.presence);
+
+    for (const leaf of this.leaves) {
+      const pres = presMap.get(leaf.branchId) ?? 0;  // 0 = branch gone → skip render
+      const s = leaf.scale * pres;
+      if (s < 0.01) continue;
+      const fx = leaf.position.x, fy = leaf.position.y, fz = leaf.position.z;
+      const start = leaf.petioleCount + leaf.centerCount;
+      for (let i = start; i < leaf.points.length; i++) {
+        const p = leaf.points[i];
+        allPoints.push(fx + p.x * s, fy + p.y * s, fz + p.z * s);
+      }
+    }
+    return new Float32Array(allPoints);
+  }
+
+  getFlowerCenterPoints(): Float32Array {
+    const allPoints: number[] = [];
+    const presMap = new Map<number, number>();
+    for (const b of this.branches) presMap.set(b.id, b.presence);
+
+    for (const leaf of this.leaves) {
+      const pres = presMap.get(leaf.branchId) ?? 0;  // 0 = branch gone → skip render
+      const s = leaf.scale * pres;
+      if (s < 0.01 || leaf.centerCount === 0) continue;
+      const fx = leaf.position.x, fy = leaf.position.y, fz = leaf.position.z;
+      for (let i = leaf.petioleCount; i < leaf.petioleCount + leaf.centerCount; i++) {
+        const p = leaf.points[i];
+        allPoints.push(fx + p.x * s, fy + p.y * s, fz + p.z * s);
+      }
+    }
+    return new Float32Array(allPoints);
+  }
+
+  /** Get the maximum Y coordinate across all segments (for dynamic camera zoom) */
+  getMaxHeight(): number {
+    let maxY = 0;
+    for (const branch of this.branches) {
+      for (const seg of branch.segments) {
+        if (seg.position.y > maxY) maxY = seg.position.y;
+      }
+    }
