@@ -84,3 +84,46 @@ export default function App() {
     setStemColor(t.stemColor);
     setLeafColor(t.leafColor);
     setFlowerCenterColor(t.flowerCenterColor);
+    setFoliageMode(t.foliageMode);
+    setLeafShape(t.leafShape);
+    SFX.selectTree();
+  }, []);
+
+  const isMobile = useIsMobile();
+
+  return (
+    <div className="relative w-full h-full overflow-hidden" style={{ background: '#f0efe8' }}>
+      <TreeScene
+        pointSize={pointSize}
+        stemColor={stemColor}
+        leafColor={leafColor}
+        leafDensity={leafDensity}
+        stemOpacity={1}
+        leafOpacity={1}
+        terrainOpacity={0.50}
+        terrainColor={treeType.terrainGrassColor}
+        terrainFlowerColors={treeType.terrainFlowerColors}
+        terrainDensity={0.6}
+        thicknessRate={thicknessRate}
+        naturalness={naturalness}
+        splitLevel={treeType.defaultSplit}
+        foliageMode={foliageMode}
+        leafShape={leafShape}
+        flowerCenterColor={flowerCenterColor}
+        growthParams={growthParams}
+        growthMode={growthMode}
+        growSpeed={growSpeed}
+        paramRanges={paramRanges}
+        handOpenness={handOpennessRef}
+        cameraControl={cameraControlRef}
+        onRestart={restartRef}
+        onGrowPress={growPressRef}
+        onGrowRelease={growReleaseRef}
+        onParamDecPress={paramDecPressRef}
+        onParamDecRelease={paramDecRelRef}
+        onBreathStateChange={breathStateRef}
+        onParamLevelChange={paramLevelStateRef}
+        onGrowFillChange={onGrowFillChangeRef}
+        autoGrow
+      />
+
