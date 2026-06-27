@@ -610,3 +610,54 @@ export class TreeEngine {
       const children = childMap.get(branchId);
       // Terminal inactive branch: stopped at maxDepth with no children (not shrunk away).
       // Treat as "alive" so its leaves stay visible — they'll be removed when the branch
+      // is explicitly deleted by _removeBranchSubtree during shrink.
+      if (!children || children.length === 0) return branch.segments.length > 1;
+      return children.some(cid => hasActiveDescendant(cid));
+    };
+
+    for (const leaf of this.leaves) {
+      leaf.age += dt;
+      const branch = branchMap.get(leaf.branchId);
+      if (!branch) {
+        leaf.targetScale = 0;
+      } else {
+        const tc = branchTipCount(branch);
+        if (tc === 0) {
+          // bloom=0: hide all foliage
+          leaf.targetScale = 0;
+        } else {
+          const totalSegs = branch.segments.length;
+          const tipStart = Math.max(0, totalSegs - tc);
+          if (branch.active || hasActiveDescendant(leaf.branchId)) {
+            leaf.targetScale = leaf.segIdx < tipStart ? 0 : 1;
+          } else {
+            leaf.targetScale = 0;
+          }
+        }
+      }
+      leaf.scale = THREE.MathUtils.lerp(leaf.scale, leaf.targetScale, dt * 3.0);
+    }
+
+    this.leaves = this.leaves.filter(l => !(l.targetScale === 0 && l.scale < 0.01));
+
+    // ── Throttled spawn: every 0.15 s ────────────────────────────────────────
+    this.leafSpawnAccum += dt;
+    if (this.leafSpawnAccum < 0.15) return;
+    this.leafSpawnAccum = 0;
+
+    const existingLeafKeys = new Set<string>();
+    for (const leaf of this.leaves) existingLeafKeys.add(`${leaf.branchId}:${leaf.segIdx}:${leaf.clusterIdx}`);
+
+    // Bloom cluster: blEff (power curve) keeps low-end density gradual.
+    // At bl=0.1 (blEff=0.032) cluster stays at 1; density visibly picks up mid-range.
+    const bloomCluster  = this.foliageMode === 'flowers' ? 1 + Math.floor(blEff * 6) : 1;
+    // Larger petals at high bloom (up to 2.5× at bloomLevel=1)
+    const bloomSizeMult = 1 + blEff * 1.5;
+
+    for (const branch of this.branches) {
+      // ── Trunk (depth=0): allow bloom at the upper tip ────────────────────────
+      // The height guard (segY / maxBranchY < 0.55) and branchTipCount's heightFactor
+      // already ensure only the very top of the trunk gets flowers. Skip only if bloom is very low.
+      if (branch.depth === 0 && blEff < 0.15) continue;
+
+      // At low bloom: only active branches and inactive-terminal branches spawn foliage.
