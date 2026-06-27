@@ -967,3 +967,54 @@ export class TreeEngine {
     for (let i = 0; i <= petioleSteps; i++) {
       const t = i / petioleSteps;
       const dist = r + stemClearance + t * petioleLen;
+      allPoints.push(new THREE.Vector3(
+        tiltedOut.x * dist, tiltedOut.y * dist, tiltedOut.z * dist,
+      ));
+    }
+    const petioleCount = allPoints.length;
+
+    // Flower center = first blade points (will be colored differently)
+    const flowerOriginDist = r + stemClearance + petioleLen;
+    const fOx = tiltedOut.x * flowerOriginDist;
+    const fOy = tiltedOut.y * flowerOriginDist;
+    const fOz = tiltedOut.z * flowerOriginDist;
+
+    const addPt = (dx: number, dy: number, dz: number) => {
+      allPoints.push(new THREE.Vector3(fOx + dx, fOy + dy, fOz + dz));
+    };
+
+    // Center cluster (5-8 points) — these get flowerCenterColor
+    const centerPts = 5 + Math.floor(Math.random() * 4);
+    const centerRadius = (0.006 + Math.random() * 0.004) * sizeMult;
+    for (let i = 0; i < centerPts; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const rr = Math.sqrt(Math.random()) * centerRadius;
+      const thick = (Math.random() - 0.5) * 0.003;
+      addPt(
+        perp1.x * Math.cos(a) * rr + perp2.x * Math.sin(a) * rr + up.x * thick,
+        perp1.y * Math.cos(a) * rr + perp2.y * Math.sin(a) * rr + up.y * thick,
+        perp1.z * Math.cos(a) * rr + perp2.z * Math.sin(a) * rr + up.z * thick,
+      );
+    }
+    const centerCount = centerPts;
+
+    // Petals: count and size both grow with bloomLevel
+    //   bloom=0 → 4–6 petals, normal size
+    //   bloom=1 → 8–12 petals, up to 1.8× longer
+    const petalCount = 4 + Math.floor(Math.random() * 3) + Math.floor(bl * 5);
+    const petalLen = (0.02 + bl * 0.016) + Math.random() * 0.025;
+    const petalWidth = petalLen * (0.5 + Math.random() * 0.3);
+    const petalTwist = Math.random() * Math.PI * 2;
+
+    // Build a local frame perpendicular to tiltedOut for petal layout
+    const pFrameX = new THREE.Vector3().crossVectors(tiltedOut, up).normalize();
+    const pFrameY = new THREE.Vector3().crossVectors(tiltedOut, pFrameX).normalize();
+
+    for (let p = 0; p < petalCount; p++) {
+      const petalAngle = petalTwist + (p / petalCount) * Math.PI * 2;
+      const pDir = pFrameX.clone().multiplyScalar(Math.cos(petalAngle))
+        .add(pFrameY.clone().multiplyScalar(Math.sin(petalAngle))).normalize();
+      const pSide = new THREE.Vector3().crossVectors(tiltedOut, pDir).normalize();
+
+      // Petal outline
+      const petalPts = 8 + Math.floor(Math.random() * 3);
