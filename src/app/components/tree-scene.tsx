@@ -100,3 +100,54 @@ function generateTerrainPoints(density: number): Float32Array {
       const fade = 1 - smoothstep(0, tSize, dist);
       // Extra density bonus near the trunk (Gaussian bell, σ≈2.5)
       const near = Math.exp(-(dist * dist) / 6.25) * 0.6;
+      const p = Math.min(1, fade + near);
+      if (Math.random() < p) {
+        pts.push(jx, terrainNoise(jx, jz), jz);
+      }
+    }
+  }
+
+  return new Float32Array(pts);
+}
+
+function generateHerbPoints(): Float32Array {
+  const pts: number[] = [];
+  const tSize = 13;
+  const herbCount = 5500;                        // dense lush carpet
+  for (let i = 0; i < herbCount; i++) {
+    const cx = (Math.random() - 0.5) * tSize * 2;
+    const cz = (Math.random() - 0.5) * tSize * 2;
+    const baseY = terrainNoise(cx, cz);
+    const blades = 3 + Math.floor(Math.random() * 4);
+    for (let b = 0; b < blades; b++) {
+      const dx = (Math.random() - 0.5) * 0.08;
+      const dz = (Math.random() - 0.5) * 0.08;
+      const height = 0.03 + Math.random() * 0.08;
+      pts.push(cx + dx, baseY + 0.01, cz + dz);
+      pts.push(cx + dx + (Math.random() - 0.5) * 0.02, baseY + height, cz + dz + (Math.random() - 0.5) * 0.02);
+    }
+  }
+  return new Float32Array(pts);
+}
+
+function generateTerrainFlowers(): Float32Array {
+  const pts: number[] = [];
+  const tSize = 9;                               // flowers closer to tree
+  const flowerCount = 300;
+  for (let i = 0; i < flowerCount; i++) {
+    const cx = (Math.random() - 0.5) * tSize * 2;
+    const cz = (Math.random() - 0.5) * tSize * 2;
+    const baseY = terrainNoise(cx, cz);
+    const stemH = 0.04 + Math.random() * 0.06;
+    pts.push(cx, baseY + stemH * 0.5, cz);
+    const petals = 3 + Math.floor(Math.random() * 3);
+    for (let p = 0; p < petals; p++) {
+      const a = (p / petals) * Math.PI * 2 + Math.random() * 0.5;
+      const r = 0.01 + Math.random() * 0.015;
+      pts.push(cx + Math.cos(a) * r, baseY + stemH + (Math.random() - 0.5) * 0.005, cz + Math.sin(a) * r);
+    }
+  }
+  return new Float32Array(pts);
+}
+
+export function TreeScene({
