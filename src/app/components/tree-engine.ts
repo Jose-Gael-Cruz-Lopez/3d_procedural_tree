@@ -406,3 +406,54 @@ export class TreeEngine {
   }
 
   /** Adjust branch spread angle — retroactive via computeChildRoot in replay */
+  adjustAngle(delta: number) {
+    this.growthParams.branchAngle = Math.max(0, Math.min(1, this.growthParams.branchAngle + delta));
+  }
+
+  /** Adjust split level threshold directly */
+  adjustSplitLevel(delta: number) {
+    this.splitLevel = Math.max(0, Math.min(1, this.splitLevel + delta));
+  }
+
+  private growBranch(branch: Branch) {
+    const lastSeg = branch.segments[branch.segments.length - 1];
+    const gp = this.growthParams;
+    const segIdx = branch.segments.length;
+    const noiseScale = 0.4;
+    const timeScale = 0.3;
+    const nx = this.noise3(branch.noiseOffset.x + segIdx * 0.15, this.time * timeScale, branch.noiseOffset.z);
+    const nz = this.noise3(branch.noiseOffset.y, this.time * timeScale, branch.noiseOffset.z + segIdx * 0.15);
+    const wobbleScale = 0.1 + gp.wobble * 3.5;
+    const wander = new THREE.Vector3(nx * branch.wobble * noiseScale * wobbleScale, 0, nz * branch.wobble * noiseScale * wobbleScale);
+    const newDir = lastSeg.direction.clone().add(wander);
+    // INVERTED: high gravity = drooping, low gravity = upright
+    const gravityMinY = 0.95 - gp.gravity * 1.05;
+    newDir.y = Math.max(newDir.y, gravityMinY);
+    newDir.normalize();
+    branch.direction.copy(newDir);
+    const newPos = lastSeg.position.clone().addScaledVector(newDir, gp.stepSize);
+    const taperHeight  = 0.04 + gp.taper * 0.10;  // kept in sync with recalculateAll
+    const taperSeg     = 0.005 + gp.taper * 0.014;
+    const heightTaper  = Math.max(0.015, 1.0 - newPos.y * taperHeight);
+    const segTaper     = Math.max(0.015, 1.0 - segIdx * taperSeg);
+    const newBaseRadius = branch.baseRadius * heightTaper * segTaper;
+    branch.segments.push({
+      position: newPos, radius: newBaseRadius * 0.3,
+      baseRadius: newBaseRadius, initialRadius: newBaseRadius,
+      age: 0, direction: newDir.clone(), segIndex: segIdx,
+      branchBaseRadius: branch.baseRadius, creationTime: this.time,
+    });
+  }
+
+  private splitBranch(branch: Branch) {
+    const gp = this.growthParams;
+    branch.active = false;
+    const lastSegIdx = branch.segments.length - 1;
+    const lastSeg = branch.segments[lastSegIdx];
+    const parentRadius = lastSeg.baseRadius;
+    const twist = Math.random() * Math.PI * 2;
+    const spreadRandom = Math.random() * 0.2;
+    const childDepth = branch.depth + 1;
+
+    for (let i = 0; i < 2; i++) {
+      const sign = i === 0 ? 1 : -1;
