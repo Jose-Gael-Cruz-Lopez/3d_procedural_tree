@@ -355,3 +355,54 @@ export class TreeEngine {
     this.updateLeaves(dt);
   }
 
+  /** GROW: grow main branches with curvature + natural thickness increase */
+  private applyGrowth(energy: number) {
+    // Grow segments (elongation) — respect size cap
+    for (const branch of this.branches) {
+      if (!branch.active || branch.kind !== 'main') continue;
+      branch.growAccum += energy * branch.speed;
+      const growInterval = 0.25;
+      while (branch.growAccum >= growInterval) {
+        if (this.totalSegmentCount >= this.maxTotalSegments) {
+          branch.growAccum = 0; // drain pending accumulation
+          break;
+        }
+        branch.growAccum -= growInterval;
+        this.growBranch(branch);
+      }
+    }
+    this.autoSplit();
+
+    // Gentle thickening via age only — branchBaseRadius stays fixed at birth value
+    // so at age=0 the radius is always branchBaseRadius*taper*0.3 (small initial).
+    for (const branch of this.branches) {
+      for (const seg of branch.segments) {
+        seg.age += energy * 0.18;
+      }
+    }
+  }
+
+  /** BLOOM: spawn lots of bloom branches at tips, much more exaggerated */
+  private bloomGrowAccum: number = 0;
+
+  private applyBloomGrowth(energy: number) {
+    // Bloom mode: accumulate bloom level — controls flower count/extension at tips
+    this.bloomLevel = Math.min(1, this.bloomLevel + energy * 0.06);
+  }
+
+  /** Adjust bloomLevel directly (used by hand tracking and bloom button) */
+  adjustBloom(delta: number) {
+    this.bloomLevel = Math.max(0, Math.min(1, this.bloomLevel + delta));
+  }
+
+  /** Adjust wobble curvature */
+  adjustWobble(delta: number) {
+    this.growthParams.wobble = Math.max(0, Math.min(1, this.growthParams.wobble + delta));
+  }
+
+  /** Adjust gravity (branch verticality) — retroactive via retroactiveReplay */
+  adjustGravity(delta: number) {
+    this.growthParams.gravity = Math.max(0, Math.min(1, this.growthParams.gravity + delta));
+  }
+
+  /** Adjust branch spread angle — retroactive via computeChildRoot in replay */
