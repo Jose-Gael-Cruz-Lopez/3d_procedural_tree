@@ -406,3 +406,54 @@ export function TreeScene({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(w, h);
+    renderer.sortObjects = true;  // respect renderOrder for proper layer ordering
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 5, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 2;
+    controls.maxDistance = 22;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.3;
+    controls.enableRotate = true;   // drag de ratón gira la escena
+    controls.enablePan = false;
+    controls.maxPolarAngle = Math.PI * 0.82; // no bajar de la línea de tierra
+    // Middle-click drag also rotates (same as left-click drag)
+    controls.mouseButtons.MIDDLE = THREE.MOUSE.ROTATE;
+    controls.update();
+
+    const circleTex = createCircleTexture();
+
+    // Engine
+    const engine = new TreeEngine();
+    engine.leafDensity  = leafDensityRef.current;
+    engine.growthParams = { ...growthParamsRef.current };
+    engine.naturalness  = naturalnessRef.current;
+    engine.splitLevel   = splitLevelRef.current;
+    engine.foliageMode  = foliageModeRef.current;
+    engine.leafShape    = leafShapeRef.current;
+    engine.growthMode   = growthModeRef.current;
+    engineRef.current   = engine;
+
+    // Initialize paramT from engine's initial params relative to the current species ranges.
+    {
+      const r = paramRangesRef.current;
+      paramTRef.current = {
+        wobble:  r.wobble[1]  > r.wobble[0]  ? (engine.growthParams.wobble  - r.wobble[0])  / (r.wobble[1]  - r.wobble[0])  : 0.5,
+        gravity: r.gravity[1] > r.gravity[0] ? (engine.growthParams.gravity - r.gravity[0]) / (r.gravity[1] - r.gravity[0]) : 0.5,
+        bloom:   0,
+      };
+    }
+
+    // Materials — perspective-attenuated (world-space size, shrinks with distance)
+    const mkMat = (color: string, size: number, opacity: number, depthWrite = false) =>
+      new THREE.PointsMaterial({
+        color: new THREE.Color(color), size, map: circleTex,
+        transparent: true, opacity, depthWrite,
+        alphaTest: 0.5,
+        depthTest: true,
+        sizeAttenuation: true, blending: THREE.NormalBlending,
+      });
