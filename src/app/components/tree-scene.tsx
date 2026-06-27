@@ -1069,3 +1069,54 @@ export function TreeScene({
 
       const mode = growthModeRef.current;
       const eng  = engineRef.current!;
+
+      // Helper: get current param level for ALL modes, NORMALIZADO al rango de la especie.
+      // El usuario ve siempre 0–100 independientemente del rango interno.
+      const getParamLevel = (): number => {
+        if (mode === 'grow') return eng.sizeFill;
+        if (mode === 'wobble')  return paramTRef.current.wobble;
+        if (mode === 'gravity') return paramTRef.current.gravity;
+        if (mode === 'bloom')   return paramTRef.current.bloom;
+        return 0;
+      };
+
+      // Helper: apply signed delta to the current mode's parameter.
+      // Positive delta → increase / grow.  Negative delta → decrease / shrink.
+      // Both directions use the same BASE rate (scaled by growSpeed for grow mode).
+      const BASE_GROW = 10;
+      let energy  = 0;
+      // Per-mode sound cooldowns (seconds): grow fires often, bloom is spaced out for softness
+      // grow: 80ms → marimba roll feel; bloom: 160ms → chimes shimmer/overlap
+      const SOUND_CD: Record<string, number> = { grow: 0.080, wobble: 0.115, gravity: 0.115, bloom: 0.160 };
+      const soundCooldown: Record<string, number> = { grow: 0, wobble: 0, gravity: 0, bloom: 0 };
+      const applyParamDelta = (delta: number) => {
+        const speed  = growSpeedRef.current;
+        const ranges = paramRangesRef.current;
+        const t      = paramTRef.current;
+        if (mode === 'grow') {
+          if (delta > 0) {
+            energy += delta * BASE_GROW * speed;
+            if (soundCooldown.grow <= 0) { SFX.growTick(); soundCooldown.grow = SOUND_CD.grow; }
+          } else {
+            eng.shrink(Math.abs(delta) * BASE_GROW * speed);
+            if (soundCooldown.grow <= 0) { SFX.shrinkTick(); soundCooldown.grow = SOUND_CD.grow; }
+          }
+        } else if (mode === 'wobble') {
+          const prev = t.wobble;
+          t.wobble = Math.max(0, Math.min(1, t.wobble + delta));
+          eng.growthParams.wobble = ranges.wobble[0] + t.wobble * (ranges.wobble[1] - ranges.wobble[0]);
+          if (Math.abs(t.wobble - prev) > 0.001 && soundCooldown.wobble <= 0) {
+            delta > 0 ? SFX.paramTick('wobble') : SFX.paramDownTick('wobble');
+            soundCooldown.wobble = SOUND_CD.wobble;
+          }
+        } else if (mode === 'gravity') {
+          const prev = t.gravity;
+          t.gravity = Math.max(0, Math.min(1, t.gravity + delta));
+          eng.growthParams.gravity = ranges.gravity[0] + t.gravity * (ranges.gravity[1] - ranges.gravity[0]);
+          if (Math.abs(t.gravity - prev) > 0.001 && soundCooldown.gravity <= 0) {
+            delta > 0 ? SFX.paramTick('gravity') : SFX.paramDownTick('gravity');
+            soundCooldown.gravity = SOUND_CD.gravity;
+          }
+        } else if (mode === 'bloom') {
+          const prev = t.bloom;
+          t.bloom = Math.max(0, Math.min(1, t.bloom + delta));
