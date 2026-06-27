@@ -304,3 +304,54 @@ export function TreeScene({
     if (engineRef.current) engineRef.current.splitLevel = splitLevel;
   }, [splitLevel]);
 
+  useEffect(() => {
+    foliageModeRef.current = foliageMode;
+    leafShapeRef.current   = leafShape;
+    if (engineRef.current) {
+      engineRef.current.foliageMode = foliageMode;
+      engineRef.current.leafShape   = leafShape;
+      engineRef.current.leaves = [];
+    }
+  }, [foliageMode, leafShape]);
+
+  useEffect(() => {
+    growSpeedRef.current   = growSpeed;
+    paramRangesRef.current = paramRanges;
+    // When species changes, keep paramT fixed and re-derive engine params from it.
+    // This way the bar stays where the user left it but the tree feels the new range.
+    applyParamTToEngine(paramRanges);
+  }, [growSpeed, paramRanges, applyParamTToEngine]);
+
+  useEffect(() => {
+    pointSizeRef.current = pointSize;
+    if (stemMaterialRef.current)         stemMaterialRef.current.size         = pointSize;
+    if (petioleMaterialRef.current)      petioleMaterialRef.current.size      = pointSize * 0.8;
+    if (leafMaterialRef.current)         leafMaterialRef.current.size         = pointSize * 1.3;
+    if (flowerCenterMaterialRef.current) flowerCenterMaterialRef.current.size = pointSize * 1.1;
+    // terrain & herb use sizeAttenuation=false (fixed pixels), no update needed
+  }, [pointSize]);
+
+  useEffect(() => {
+    stemColorRef.current = stemColor;
+    // Update smooth target instead of setting material directly
+    targetStemColorRef.current?.set(stemColor);
+  }, [stemColor]);
+
+  useEffect(() => {
+    leafColorRef.current = leafColor;
+    targetLeafColorRef.current?.set(leafColor);
+    if (gFlowerPetalMatRef.current) gFlowerPetalMatRef.current.color.set(leafColor);
+  }, [leafColor]);
+
+  useEffect(() => {
+    stemOpacityRef.current = stemOpacity;
+    if (stemMaterialRef.current)    stemMaterialRef.current.opacity    = stemOpacity;
+    if (petioleMaterialRef.current) petioleMaterialRef.current.opacity = stemOpacity;
+  }, [stemOpacity]);
+
+  useEffect(() => {
+    leafOpacityRef.current = leafOpacity;
+    if (leafMaterialRef.current)         leafMaterialRef.current.opacity         = leafOpacity;
+    if (flowerCenterMaterialRef.current) flowerCenterMaterialRef.current.opacity = leafOpacity;
+  }, [leafOpacity]);
+
