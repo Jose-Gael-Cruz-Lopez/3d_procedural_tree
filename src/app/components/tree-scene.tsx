@@ -1018,3 +1018,54 @@ export function TreeScene({
       animId = requestAnimationFrame(animate);
       const now = performance.now();
       const dt  = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime  = now;
+
+      // ── Camera hand control (right hand solo = orbit + zoom) ────────────
+      const cc = cameraControl.current;
+      // Auto-rotate: drift to gentle spin; PAUSE when camera hand-control is active
+      // (to avoid the subtle drift during pinch zoom)
+      if (cc.active) {
+        controls.autoRotate = false;
+      } else {
+        controls.autoRotate = true;
+        controls.autoRotateSpeed += (0.3 - controls.autoRotateSpeed) * Math.min(1, 2 * dt);
+      }
+
+      if (cc.active) {
+        // Zoom only — pinch closed = zoom in, pinch open = zoom out
+        const zoomDir  = 0.5 - cc.zoom;
+        userZoomMult   = Math.max(0.35, Math.min(1.4,
+          userZoomMult * (1 + zoomDir * 0.8 * dt),
+        ));
+      } else {
+        // Slowly return zoom to neutral when no hand
+        userZoomMult += (1.0 - userZoomMult) * Math.min(1, 0.5 * dt);
+      }
+
+      // ── Smooth color transition ──────────────────────────────────────────
+      const ce = 1 - Math.exp(-2.8 * dt);
+      if (targetStemColorRef.current) {
+        stemMat.color.lerp(targetStemColorRef.current, ce);
+        petioleMat.color.lerp(targetStemColorRef.current, ce);
+      }
+      if (targetLeafColorRef.current)   leafMat.color.lerp(targetLeafColorRef.current, ce);
+      if (targetCenterColorRef.current) centerMat.color.lerp(targetCenterColorRef.current, ce);
+
+      // ── Camera inertia for particle sway (angle-based, zoom-immune) ──────
+      swayTime += dt;
+      const cx = camera.position.x - controls.target.x;
+      const cz = camera.position.z - controls.target.z;
+      const curAngle = Math.atan2(cx, cz);
+      let dAngle = curAngle - prevCamAngle;
+      // Wrap to [-π, +π]
+      if (dAngle >  Math.PI) dAngle -= 2 * Math.PI;
+      if (dAngle < -Math.PI) dAngle += 2 * Math.PI;
+      prevCamAngle = curAngle;
+      // Angular velocity → tangential inertia muy suave: 0.03 en vez de 0.18
+      // Un valor alto hace que las hojas "vuelen" al girar rápido la cámara
+      const angVel = dAngle / Math.max(dt, 0.001);
+      inertiaX = inertiaX * 0.82 + (-Math.sin(curAngle)) * angVel * 0.03;
+      inertiaZ = inertiaZ * 0.82 + ( Math.cos(curAngle)) * angVel * 0.03;
+
+      const mode = growthModeRef.current;
+      const eng  = engineRef.current!;
