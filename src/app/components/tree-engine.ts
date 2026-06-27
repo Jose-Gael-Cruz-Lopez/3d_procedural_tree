@@ -202,3 +202,54 @@ export class TreeEngine {
     if (!parent) return;                          // parent not in map yet — skip safely
     const parentSeg = parent.segments[branch.parentSegIdx];
     if (!parentSeg) return;
+    const parentDir = parentSeg.direction;
+    const parentPos = parentSeg.position;
+    const parentRadius = parentSeg.baseRadius;
+    const arbitrary = Math.abs(parentDir.y) > 0.9 ? _v1.set(1, 0, 0) : _v1.set(0, 1, 0);
+    const axis = _v2.crossVectors(parentDir, arbitrary).normalize();
+    axis.applyAxisAngle(parentDir, branch.twistAngle);
+    const rootSeg = branch.segments[0];
+
+    if (branch.spawnType === 'split') {
+      const baseSpread = 0.15 + gp.branchAngle * 0.7;
+      const spreadAngle = baseSpread + branch.spreadRandom;
+      rootSeg.direction.copy(parentDir).applyAxisAngle(axis, branch.splitSign * spreadAngle);
+      // INVERTED gravity
+      rootSeg.direction.y = Math.max(rootSeg.direction.y, 0.50 - gp.gravity * 0.45);
+      rootSeg.direction.normalize();
+      const childRadius = parentRadius * 0.55;
+      _v3.copy(axis).multiplyScalar(branch.splitSign * (parentRadius - childRadius) * 0.8);
+      rootSeg.position.copy(parentPos).add(_v3);
+    } else {
+      const lateralAngle = 0.5 + gp.branchAngle * 0.8 + branch.spreadRandom;
+      rootSeg.direction.copy(parentDir).applyAxisAngle(axis, lateralAngle);
+      // INVERTED gravity
+      rootSeg.direction.y = Math.max(rootSeg.direction.y, 0.35 - gp.gravity * 0.35);
+      rootSeg.direction.normalize();
+      _v3.copy(axis).multiplyScalar(parentRadius);
+      rootSeg.position.copy(parentPos).add(_v3);
+    }
+    branch.direction.copy(rootSeg.direction);
+  }
+
+  private recalculateAll(rate: number) {
+    const gp = this.growthParams;
+    // Increased multipliers: more aggressive taper from base to tips
+    const taperHeight = 0.04 + gp.taper * 0.10;  // was 0.01 + 0.06
+    const taperSeg    = 0.005 + gp.taper * 0.014; // was 0.001 + 0.005
+
+    // Only update radii — no retroactive position replay
+    for (const branch of this.branches) {
+      for (const seg of branch.segments) {
+        const ht = Math.max(0.015, 1.0 - seg.position.y * taperHeight); // floor was 0.08
+        const st = Math.max(0.015, 1.0 - seg.segIndex * taperSeg);      // floor was 0.08
+        seg.initialRadius = seg.branchBaseRadius * ht * st;
+        const fillT = 1 - Math.exp(-seg.age * 0.8);
+        const filled = seg.initialRadius * (0.3 + 0.7 * fillT);
+        const logSpeed = 3.0;
+        const continuousGrowth = rate * Math.log(1 + seg.age * logSpeed);
+        // Taper the growth contribution too: base thickens, tips stay thin
+        const taperFactor = Math.max(0.04, ht * st);
+        const taperedGrowth = continuousGrowth * taperFactor;
+        seg.baseRadius = seg.initialRadius + taperedGrowth;
+        seg.radius     = filled           + taperedGrowth;
