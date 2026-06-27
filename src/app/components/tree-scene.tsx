@@ -559,3 +559,54 @@ export function TreeScene({
     // interleaves. At any count prefix every angular direction is represented equally.
     // This prevents the directional bias that a plain sort-by-noisy-key creates —
     // the phase offsets in multi-octave noise produce systematically lower key values
+    // in some directions, so early items all cluster on one side of the trunk.
+    const spokeSort = <T extends { x: number; z: number }>(pool: T[], N = 8): T[] => {
+      const spokes: T[][] = Array.from({ length: N }, () => []);
+      for (const f of pool) {
+        const ang = Math.atan2(f.z, f.x);
+        const bi  = Math.floor(((ang + Math.PI) / (2 * Math.PI)) * N) % N;
+        spokes[bi].push(f);
+      }
+      for (const sp of spokes)
+        sp.sort((a, b) => Math.sqrt(a.x * a.x + a.z * a.z) - Math.sqrt(b.x * b.x + b.z * b.z));
+      const out: T[] = [];
+      const maxLen = Math.max(...spokes.map(s => s.length));
+      for (let i = 0; i < maxLen; i++)
+        for (const sp of spokes)
+          if (i < sp.length) out.push(sp[i]);
+      return out;
+    };
+
+    interface GFlower { x: number; z: number; petals: number; r: number; offsets: number[] }
+    const GF_POOL = 300;
+    const gFlowerPool: GFlower[] = [];
+    for (let i = 0; i < GF_POOL; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const radius = Math.pow(Math.random(), 2.5) * 10;
+      const petals = 4 + Math.floor(Math.random() * 5);
+      const r = 0.022 + Math.random() * 0.048;
+      const offsets: number[] = [];
+      for (let p = 0; p < petals; p++) {
+        const pa = (p / petals) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+        offsets.push(Math.cos(pa), Math.sin(pa));
+      }
+      gFlowerPool.push({ x: Math.cos(a) * radius, z: Math.sin(a) * radius, petals, r, offsets });
+    }
+    // Spoke-sort: flowers always encircle the tree at any count prefix
+    Object.assign(gFlowerPool, spokeSort(gFlowerPool));
+
+    // Herbs: grow-driven. Two blade points per clump.
+    interface GHerb { x: number; z: number; dx: number; dz: number; h: number }
+    const GH_POOL = 400;
+    const gHerbPool: GHerb[] = [];
+    for (let i = 0; i < GH_POOL; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const radius = Math.pow(Math.random(), 2.0) * 10;
+      gHerbPool.push({
+        x: Math.cos(a) * radius, z: Math.sin(a) * radius,
+        dx: (Math.random() - 0.5) * 0.06, dz: (Math.random() - 0.5) * 0.06,
+        h: 0.04 + Math.random() * 0.055,
+      });
+    }
+    // spokeSort ensures herbs grow outward uniformly in all directions from the trunk
+    Object.assign(gHerbPool, spokeSort(gHerbPool));
