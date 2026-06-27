@@ -1324,3 +1324,54 @@ export class TreeEngine {
    * Shrink / rewind — mirror image of applyGrowth().
    *
    * applyGrowth() iterates ALL active main branches and adds one segment each tick.
+   * shrink()     iterates ALL active main branches and removes one segment each tick.
+   *
+   * Using the SAME filter (active + kind==='main') and SAME interval (0.25) means
+   * the animation is a true time-reversal of grow:
+   *  - laterals and their parent both grew together → both shrink together
+   *  - split children are active, parent inactive → children shrink first,
+   *    then parent reactivates and shrinks, exactly as expected
+   */
+  private shrinkAccum: number = 0;
+
+  shrink(energy: number) {
+    // ── Thinning: exact inverse of applyGrowth's age accumulation ──
+    // grow: seg.age += energy*0.18 → shrink: seg.age -= energy*0.18
+    // At age=0 the radius returns to branchBaseRadius*taper*0.3 (small initial).
+    for (const branch of this.branches) {
+      for (const seg of branch.segments) {
+        seg.age = Math.max(0, seg.age - energy * 0.18);
+      }
+    }
+
+    this.shrinkAccum += energy;
+    const removeInterval = 0.25; // same as grow's growInterval → symmetric speed
+
+    while (this.shrinkAccum >= removeInterval) {
+      this.shrinkAccum -= removeInterval;
+
+      // Same filter as applyGrowth — active main branches are the "tips" of the tree
+      const activeBranches = this.branches.filter(b => b.active && b.kind === 'main');
+
+      if (activeBranches.length === 0) {
+        this.shrinkAccum = 0;
+        return;
+      }
+
+      const parentsToCheck = new Set<number>();
+
+      for (const b of activeBranches) {
+        if (b.segments.length <= 1) continue;
+
+        b.segments.pop();
+        const removedSegIdx = b.segments.length;
+        this.leaves = this.leaves.filter(
+          l => !(l.branchId === b.id && l.segIdx >= removedSegIdx)
+        );
+
+        // Remove any children whose attachment point (parentSegIdx) now lies on the
+        // removed segment — otherwise computeChildRoot returns early and they float.
+        const orphans = this.branches.filter(
+          c => c.parentBranchId === b.id && c.parentSegIdx >= b.segments.length
+        );
+        for (const orphan of orphans) {
