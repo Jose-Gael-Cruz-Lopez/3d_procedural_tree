@@ -1337,15 +1337,45 @@ export function TreeScene({
       currentMaxDist = Math.min(baseTarget * userZoomMult, 13);
       // Órbita punto medio — árbol centrado-bajo en pantalla
       const targetY = treeHeight > 0.5 ? treeHeight * 0.65 + 0.8 : 1.2;
-      // Auto-zoom unless user is actively pinching
-      if (pinchZoomOverride > 0) {
+
+      // Trigger the cinematic camera move once the tree is fully grown & bloomed
+      if (cinePhase === 0 && eng.sizeFill >= 1.0 && paramTRef.current.bloom >= 0.98) {
+        const sph0 = new THREE.Spherical().setFromVector3(
+          camera.position.clone().sub(controls.target),
+        );
+        cineAz       = sph0.theta;   // freeze current azimuth — no horizontal swing
+        cineStartPol = sph0.phi;
+        cineStartRad = sph0.radius;
+        cinePhase = 1;
+        cineT = 0;
+      }
+
+      if (cinePhase === 1) {
+        // Steady glide to the elevated, pulled-back framing
+        cineT += dt;
+        const u = Math.min(1, cineT / CINE_DUR);
+        // easeInOutSine — gentle start/stop, near-constant speed through the middle
+        const e = 0.5 - 0.5 * Math.cos(Math.PI * u);
+        const pol = cineStartPol + (CINE_TARGET_POL - cineStartPol) * e;
+        const rad = cineStartRad + (CINE_TARGET_RAD - cineStartRad) * e;
+        const off = new THREE.Vector3().setFromSpherical(new THREE.Spherical(rad, pol, cineAz));
+        camera.position.copy(controls.target).add(off);
+        smoothedCamDist = rad;
+        if (u >= 1) { cinePhase = 2; smoothedCamDist = CINE_TARGET_RAD; }
+      } else if (cinePhase === 2) {
+        // Settled — controls.update() drives the slow 360° turntable (autoRotate on)
+        // at the locked elevation/distance; the user can still drag to orbit too.
+      } else if (pinchZoomOverride > 0) {
+        // Auto-zoom paused while user is actively pinching
         pinchZoomOverride = Math.max(0, pinchZoomOverride - dt);
+        const camDir = camera.position.clone().sub(controls.target).normalize();
+        camera.position.copy(controls.target).addScaledVector(camDir, smoothedCamDist);
       } else {
         smoothedCamDist += (currentMaxDist - smoothedCamDist) * dt * 0.5;
         smoothedCamDist = Math.min(smoothedCamDist, 13); // hard cap
+        const camDir = camera.position.clone().sub(controls.target).normalize();
+        camera.position.copy(controls.target).addScaledVector(camDir, smoothedCamDist);
       }
-      const camDir = camera.position.clone().sub(controls.target).normalize();
-      camera.position.copy(controls.target).addScaledVector(camDir, smoothedCamDist);
       // Seguimiento suave del centro de órbita (lerp lento para no ser brusco)
       controls.target.y += (targetY - controls.target.y) * Math.min(1, dt * 0.8);
 
